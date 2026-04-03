@@ -18,3 +18,12 @@
     --foreground: #ededed;
   }
 }
+
+/*
+  Tailwind v4 emits a `.collapse` utility (visibility: collapse for tables).
+  Bootstrap uses `.collapse` on `.navbar-collapse` for show/hide. That clash
+  hides the whole navbar row (search, icons, profile). Force visible here.
+*/
+.collapse.navbar-collapse {
+  visibility: visible !important;
+}

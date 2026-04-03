@@ -1,0 +1,70 @@
+/* Feed desktop navbar: align search, nav icons, and profile like feed.html + Bootstrap 5 */
+@media (min-width: 992px) {
+  #navbarSupportedContent.feed-navbar-collapse {
+    flex-basis: auto;
+    flex-grow: 1;
+    align-items: center !important;
+  }
+
+  .feed-header-collapse-inner {
+    display: flex !important;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    width: 100%;
+    column-gap: 0.25rem;
+    row-gap: 0.5rem;
+  }
+
+  .feed-header-collapse-inner ._header_form {
+    margin-left: 0 !important;
+    margin-right: auto;
+  }
+
+  .feed-header-collapse-inner ._header_nav_list {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .feed-header-collapse-inner ._header_nav_profile {
+    flex-shrink: 0;
+    margin-left: 0.5rem;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .feed-header-collapse-inner {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    padding-top: 0.5rem;
+  }
+
+  .feed-header-collapse-inner ._header_form {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100%;
+  }
+
+  .feed-header-collapse-inner ._header_nav_list {
+    margin-left: 0 !important;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+/* Profile block: match template hover/focus */
+.feed-header-profile-trigger {
+  cursor: pointer;
+}
+
+.feed-header-profile-trigger:focus-visible {
+  outline: 2px solid var(--color5, #1890ff);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

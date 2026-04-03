@@ -4,6 +4,7 @@ import "@/styles/bootstrap.min.css";
 import "@/styles/common.css";
 import "@/styles/main.css";
 import "@/styles/responsive.css";
+import "@/styles/feed-header.css";
 
 const poppins = Poppins({
   weight: ["100", "300", "400", "500", "600", "700", "800"],
