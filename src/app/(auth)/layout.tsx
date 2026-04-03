@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "@/styles/bootstrap.min.css";
 import "@/styles/common.css";
@@ -11,12 +10,7 @@ const poppins = Poppins({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "Login | Buddy Script",
-  description: "Sign in to Buddy Script",
-};
-
-export default function LoginLayout({
+export default function AuthLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
