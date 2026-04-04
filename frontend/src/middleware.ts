@@ -4,10 +4,17 @@ import type { NextRequest } from "next/server";
 
 const AUTH_COOKIE = "buddy_token";
 
+let loggedJwtSecretWarning = false;
+
 export async function middleware(request: NextRequest) {
   const secret = process.env.JWT_SECRET;
   if (!secret || secret.length < 16) {
-    console.error("JWT_SECRET is missing or too short in frontend environment (use .env.local).");
+    if (!loggedJwtSecretWarning) {
+      loggedJwtSecretWarning = true;
+      console.warn(
+        "[buddy-script] JWT_SECRET is missing or too short. Copy JWT_SECRET from backend/.env into frontend/.env.local (same value, at least 16 characters), then restart `next dev`.",
+      );
+    }
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

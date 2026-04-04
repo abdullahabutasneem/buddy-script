@@ -1,61 +1,21 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useActionState } from "react";
+import {
+  registerAction,
+  type AuthFormState,
+} from "@/actions/auth";
+
+const initial: AuthFormState = { error: null };
 
 export function RegisterForm() {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError(null);
-    const form = e.currentTarget;
-    const firstName = (form.elements.namedItem("firstName") as HTMLInputElement).value;
-    const lastName = (form.elements.namedItem("lastName") as HTMLInputElement).value;
-    const email = (form.elements.namedItem("email") as HTMLInputElement).value;
-    const password = (form.elements.namedItem("password") as HTMLInputElement).value;
-    const confirmPassword = (form.elements.namedItem("confirmPassword") as HTMLInputElement).value;
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    setPending(true);
-    try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          email,
-          password,
-          confirmPassword,
-        }),
-      });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) {
-        setError(data.error ?? "Registration failed");
-        return;
-      }
-      router.push("/feed");
-      router.refresh();
-    } catch {
-      setError("Network error. Is the API running?");
-    } finally {
-      setPending(false);
-    }
-  }
+  const [state, formAction, isPending] = useActionState(registerAction, initial);
 
   return (
-    <form className="_social_registration_form" onSubmit={onSubmit}>
-      {error ? (
+    <form className="_social_registration_form" action={formAction}>
+      {state.error ? (
         <p className="text-sm text-red-600 _mar_b14" role="alert">
-          {error}
+          {state.error}
         </p>
       ) : null}
       <div className="row">
@@ -156,8 +116,12 @@ export function RegisterForm() {
       <div className="row">
         <div className="col-lg-12 col-md-12 col-xl-12 col-sm-12">
           <div className="_social_registration_form_btn _mar_t40 _mar_b60">
-            <button type="submit" className="_social_registration_form_btn_link _btn1" disabled={pending}>
-              {pending ? "Creating account…" : "Register now"}
+            <button
+              type="submit"
+              className="_social_registration_form_btn_link _btn1"
+              disabled={isPending}
+            >
+              {isPending ? "Creating account…" : "Register now"}
             </button>
           </div>
         </div>

@@ -1,46 +1,21 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useActionState } from "react";
+import {
+  loginAction,
+  type AuthFormState,
+} from "@/actions/auth";
+
+const initial: AuthFormState = { error: null };
 
 export function LoginForm() {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError(null);
-    const form = e.currentTarget;
-    const email = (form.elements.namedItem("email") as HTMLInputElement).value;
-    const password = (form.elements.namedItem("password") as HTMLInputElement).value;
-    setPending(true);
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) {
-        setError(data.error ?? "Login failed");
-        return;
-      }
-      router.push("/feed");
-      router.refresh();
-    } catch {
-      setError("Network error. Is the API running?");
-    } finally {
-      setPending(false);
-    }
-  }
+  const [state, formAction, isPending] = useActionState(loginAction, initial);
 
   return (
-    <form className="_social_login_form" onSubmit={onSubmit}>
-      {error ? (
+    <form className="_social_login_form" action={formAction}>
+      {state.error ? (
         <p className="text-sm text-red-600 _mar_b14" role="alert">
-          {error}
+          {state.error}
         </p>
       ) : null}
       <div className="row">
@@ -99,8 +74,12 @@ export function LoginForm() {
       <div className="row">
         <div className="col-lg-12 col-md-12 col-xl-12 col-sm-12">
           <div className="_social_login_form_btn _mar_t40 _mar_b60">
-            <button type="submit" className="_social_login_form_btn_link _btn1" disabled={pending}>
-              {pending ? "Signing in…" : "Login now"}
+            <button
+              type="submit"
+              className="_social_login_form_btn_link _btn1"
+              disabled={isPending}
+            >
+              {isPending ? "Signing in…" : "Login now"}
             </button>
           </div>
         </div>
