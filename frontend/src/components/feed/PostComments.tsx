@@ -68,7 +68,8 @@ export type PostCommentsProps = {
     seed: string;
     photoUrl: string | null;
   } | null;
-  onCommentsChanged?: () => void;
+  /** Fires after a new comment is posted (passes `postId` for targeted feed updates). */
+  onCommentsChanged?: (postId: string) => void;
 };
 
 export function PostComments({
@@ -145,7 +146,7 @@ export function PostComments({
       setReplyText("");
       setReplyToId(null);
       await loadComments();
-      onCommentsChanged?.();
+      onCommentsChanged?.(postId);
     } finally {
       setSubmitBusy(false);
     }

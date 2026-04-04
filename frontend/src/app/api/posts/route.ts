@@ -13,9 +13,11 @@ export const runtime = "nodejs";
  */
 export async function GET(request: NextRequest) {
   const cookie = request.headers.get("cookie");
+  const qs = request.nextUrl.search;
+  const url = `${backendOrigin}/api/posts${qs}`;
   let res: Response;
   try {
-    res = await fetch(`${backendOrigin}/api/posts`, {
+    res = await fetch(url, {
       method: "GET",
       headers: cookie ? { cookie } : {},
       cache: "no-store",

@@ -7,7 +7,14 @@ import mongoose from "mongoose";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { Comment } from "../models/Comment.js";
 import { Post } from "../models/Post.js";
-import { likeEngagement, userIdsEqual, type AuthorPublic } from "../utils/likes.js";
+import { User } from "../models/User.js";
+import { decodeFeedCursor, encodeFeedCursor } from "../utils/feedCursor.js";
+import {
+  likeEngagement,
+  likeEngagementForFeed,
+  userIdsEqual,
+  type AuthorPublic,
+} from "../utils/likes.js";
 
 const postsDir = path.join(process.cwd(), "uploads", "posts");
 fs.mkdirSync(postsDir, { recursive: true });
@@ -88,7 +95,24 @@ function postVisibilityMatch(viewerId: string) {
   };
 }
 
-function serializePost(p: LeanPost, userId: string, commentCount = 0) {
+const FEED_DEFAULT_LIMIT = 20;
+const FEED_MAX_LIMIT = 50;
+/** Resolve at most this many liker profiles per post on the feed (UI shows fewer). */
+const FEED_LIKER_PREVIEW = 8;
+
+function parseFeedLimit(raw: unknown): number {
+  const q = Array.isArray(raw) ? raw[0] : raw;
+  const n = typeof q === "string" ? parseInt(q, 10) : Number.NaN;
+  if (!Number.isFinite(n) || n < 1) return FEED_DEFAULT_LIMIT;
+  return Math.min(n, FEED_MAX_LIMIT);
+}
+
+function serializePost(
+  p: LeanPost,
+  userId: string,
+  commentCount = 0,
+  feedLikerPreview?: AuthorPublic[],
+) {
   const authorRaw = p.author as AuthorShape | null;
   const author =
     authorRaw && authorRaw._id != null
@@ -104,6 +128,14 @@ function serializePost(p: LeanPost, userId: string, commentCount = 0) {
     authorRaw != null &&
     authorRaw._id != null &&
     userIdsEqual(String(authorRaw._id), userId);
+  const engagement =
+    feedLikerPreview !== undefined
+      ? likeEngagementForFeed(
+          p.likedBy as unknown[] | undefined,
+          userId,
+          feedLikerPreview,
+        )
+      : likeEngagement(p.likedBy, userId);
   return {
     id: String(p._id),
     text: p.text,
@@ -113,7 +145,7 @@ function serializePost(p: LeanPost, userId: string, commentCount = 0) {
     visibility,
     isAuthor,
     commentCount,
-    ...likeEngagement(p.likedBy, userId),
+    ...engagement,
   };
 }
 
@@ -204,13 +236,72 @@ function nestCommentTree(flat: FlatComment[]): NestedComment[] {
 
 router.get("/", requireAuth, async (req, res) => {
   const userId = req.userId!;
-  const posts = await Post.find(postVisibilityMatch(userId))
-    .sort({ createdAt: -1 })
+  const limit = parseFeedLimit(req.query.limit);
+  const cursorPayload = decodeFeedCursor(req.query.cursor);
+
+  const visibility = postVisibilityMatch(userId);
+  const filter: Record<string, unknown> = cursorPayload
+    ? {
+        $and: [
+          visibility,
+          {
+            $or: [
+              { createdAt: { $lt: new Date(cursorPayload.t) } },
+              {
+                createdAt: new Date(cursorPayload.t),
+                _id: { $lt: new mongoose.Types.ObjectId(cursorPayload.i) },
+              },
+            ],
+          },
+        ],
+      }
+    : visibility;
+
+  const rawPosts = await Post.find(filter)
+    .sort({ createdAt: -1, _id: -1 })
+    .limit(limit + 1)
     .populate("author", "firstName lastName email")
-    .populate("likedBy", "firstName lastName email")
     .lean();
 
-  const ids = posts.map((p) => p._id);
+  const hasMore = rawPosts.length > limit;
+  const page = hasMore ? rawPosts.slice(0, limit) : rawPosts;
+
+  const likerIdSet = new Set<string>();
+  for (const p of page) {
+    const arr = (p as { likedBy?: unknown[] }).likedBy ?? [];
+    for (let i = 0; i < Math.min(arr.length, FEED_LIKER_PREVIEW); i++) {
+      likerIdSet.add(String(arr[i]));
+    }
+  }
+  const likerIds = [...likerIdSet].filter((id) => mongoose.isValidObjectId(id));
+  const likerDocs =
+    likerIds.length > 0
+      ? await User.find({
+          _id: { $in: likerIds.map((id) => new mongoose.Types.ObjectId(id)) },
+        })
+          .select("firstName lastName email")
+          .lean()
+      : [];
+  const likerMap = new Map(
+    likerDocs.map((u) => [String(u._id), u as unknown as AuthorShape]),
+  );
+
+  function likerPreviewForPost(p: (typeof page)[0]): AuthorPublic[] {
+    const arr = (p as { likedBy?: unknown[] }).likedBy ?? [];
+    const out: AuthorPublic[] = [];
+    for (let i = 0; i < Math.min(arr.length, FEED_LIKER_PREVIEW); i++) {
+      const id = String(arr[i]);
+      const u = likerMap.get(id);
+      out.push(
+        u && u._id != null
+          ? serializeAuthor(u)
+          : { id, firstName: "Unknown", lastName: "user", email: "" },
+      );
+    }
+    return out;
+  }
+
+  const ids = page.map((p) => p._id);
   const countMap = new Map<string, number>();
   if (ids.length > 0) {
     const counts = await Comment.aggregate<{ _id: unknown; count: number }>([
@@ -222,15 +313,52 @@ router.get("/", requireAuth, async (req, res) => {
     }
   }
 
+  const lastRaw = page[page.length - 1] as unknown;
+  const last =
+    lastRaw != null &&
+    typeof lastRaw === "object" &&
+    "createdAt" in lastRaw &&
+    "_id" in lastRaw
+      ? (lastRaw as { _id: mongoose.Types.ObjectId; createdAt: Date })
+      : undefined;
+  const nextCursor =
+    hasMore && last != null
+      ? encodeFeedCursor(last.createdAt, last._id)
+      : null;
+
   res.json({
-    posts: posts.map((p) =>
+    posts: page.map((p) =>
       serializePost(
         p as unknown as LeanPost,
         userId,
         countMap.get(String(p._id)) ?? 0,
+        likerPreviewForPost(p),
       ),
     ),
+    nextCursor,
+    hasMore,
   });
+});
+
+router.get("/:postId/stats", requireAuth, async (req, res) => {
+  const postId = paramId(req.params.postId);
+  const userId = req.userId!;
+  if (!postId || !mongoose.isValidObjectId(postId)) {
+    res.status(400).json({ error: "Invalid post id" });
+    return;
+  }
+  const post = await Post.findOne({
+    _id: postId,
+    ...postVisibilityMatch(userId),
+  })
+    .select("_id")
+    .lean();
+  if (!post) {
+    res.status(404).json({ error: "Post not found" });
+    return;
+  }
+  const commentCount = await Comment.countDocuments({ post: postId });
+  res.json({ commentCount });
 });
 
 router.post("/", requireAuth, uploadImageOptional, async (req, res) => {

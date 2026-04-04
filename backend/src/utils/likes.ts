@@ -68,3 +68,20 @@ export function likeEngagement(likedBy: unknown[] | undefined, userId: string) {
     likedByUsers: serializeLikedByUsers(likedBy),
   };
 }
+
+/**
+ * Feed list: accurate counts from full `likedBy` id list, but only a small preview
+ * of user profiles (resolved separately) to avoid loading millions of liker docs.
+ */
+export function likeEngagementForFeed(
+  likedByRaw: unknown[] | undefined,
+  userId: string,
+  previewAuthors: AuthorPublic[],
+) {
+  const ids = normalizeLikerIds(likedByRaw);
+  return {
+    likeCount: ids.length,
+    likedByMe: ids.some((id) => userIdsEqual(id, userId)),
+    likedByUsers: previewAuthors,
+  };
+}

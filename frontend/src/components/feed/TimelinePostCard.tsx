@@ -19,7 +19,7 @@ type TimelinePostCardProps = {
   likeBusy: boolean;
   onToggleLike: (post: FeedPost) => void;
   onPostDeleted: (postId: string) => void;
-  onCommentsChanged?: () => void;
+  onCommentsChanged?: (postId: string) => void;
   viewer: FeedViewerBrief;
 };
 
