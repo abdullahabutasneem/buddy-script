@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getBackendOrigin } from "@/lib/backendUrl";
 
-const backendUrl = process.env.BACKEND_URL || "http://127.0.0.1:4000";
+const backendOrigin = getBackendOrigin();
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
   const cookie = request.headers.get("cookie");
   let res: Response;
   try {
-    res = await fetch(`${backendUrl}/api/posts`, {
+    res = await fetch(`${backendOrigin}/api/posts`, {
       method: "GET",
       headers: cookie ? { cookie } : {},
       cache: "no-store",
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
 
   let res: Response;
   try {
-    res = await fetch(`${backendUrl}/api/posts`, {
+    res = await fetch(`${backendOrigin}/api/posts`, {
       method: "POST",
       headers: {
         cookie: request.headers.get("cookie") ?? "",

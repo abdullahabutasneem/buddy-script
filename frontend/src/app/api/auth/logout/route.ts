@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { getBackendOrigin } from "@/lib/backendUrl";
 import { forwardSetCookies } from "@/lib/authCookie";
 
-const backendUrl = process.env.BACKEND_URL || "http://127.0.0.1:4000";
+const backendOrigin = getBackendOrigin();
 
 function clearBuddyCookie(res: NextResponse) {
   res.cookies.set("buddy_token", "", {
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
   const cookieHeader = request.headers.get("cookie");
   let res: Response;
   try {
-    res = await fetch(`${backendUrl}/api/auth/logout`, {
+    res = await fetch(`${backendOrigin}/api/auth/logout`, {
       method: "POST",
       headers: cookieHeader ? { cookie: cookieHeader } : {},
     });

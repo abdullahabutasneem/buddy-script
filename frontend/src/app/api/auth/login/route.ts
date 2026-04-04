@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
+import { getBackendOrigin } from "@/lib/backendUrl";
 import { forwardSetCookies } from "@/lib/authCookie";
+import { rejectOversizedJsonBody } from "@/lib/rejectOversizedBody";
 
-const backendUrl = process.env.BACKEND_URL || "http://127.0.0.1:4000";
+const backendOrigin = getBackendOrigin();
 
 export async function POST(request: Request) {
+  const tooLarge = rejectOversizedJsonBody(request);
+  if (tooLarge) return tooLarge;
+
   let body: unknown;
   try {
     body = await request.json();
@@ -13,7 +18,7 @@ export async function POST(request: Request) {
 
   let res: Response;
   try {
-    res = await fetch(`${backendUrl}/api/auth/login`, {
+    res = await fetch(`${backendOrigin}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

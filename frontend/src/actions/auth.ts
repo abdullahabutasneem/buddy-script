@@ -6,9 +6,10 @@ import {
   friendlyHttpError,
   readApiJsonBody,
 } from "@/lib/apiErrors";
+import { getBackendOrigin } from "@/lib/backendUrl";
 import { extractBuddyTokenFromFetchResponse } from "@/lib/authCookie";
 
-const backendUrl = process.env.BACKEND_URL || "http://127.0.0.1:4000";
+const backendOrigin = getBackendOrigin();
 
 export type AuthFormState = { error: string | null };
 
@@ -37,7 +38,7 @@ export async function loginAction(
 
   let res: Response;
   try {
-    res = await fetch(`${backendUrl}/api/auth/login`, {
+    res = await fetch(`${backendOrigin}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: emailTrim, password }),
@@ -110,7 +111,7 @@ export async function registerAction(
 
   let res: Response;
   try {
-    res = await fetch(`${backendUrl}/api/auth/register`, {
+    res = await fetch(`${backendOrigin}/api/auth/register`, {
       method: "POST",
       body: outgoing,
     });

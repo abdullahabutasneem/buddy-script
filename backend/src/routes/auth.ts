@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import { User } from "../models/User.js";
 import { signToken } from "../utils/jwt.js";
@@ -12,6 +13,16 @@ import {
 } from "../utils/avatarUpload.js";
 
 const router = Router();
+
+/** Slow brute-force / credential-stuffing attempts (skipped in development). */
+const authWriteLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 40,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests. Try again later." },
+  skip: () => process.env.NODE_ENV !== "production",
+});
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -39,7 +50,11 @@ function validateName(value: unknown, field: string): string | null {
   return null;
 }
 
-router.post("/register", optionalAvatarUpload, async (req, res) => {
+router.post(
+  "/register",
+  authWriteLimiter,
+  optionalAvatarUpload,
+  async (req, res) => {
   const uploadedPath = req.file?.path;
   const cleanupUpload = () => {
     if (uploadedPath && fs.existsSync(uploadedPath)) {
@@ -158,7 +173,7 @@ router.patch("/profile", requireAuth, optionalAvatarUpload, async (req, res) => 
   }
 });
 
-router.post("/login", async (req, res) => {
+router.post("/login", authWriteLimiter, async (req, res) => {
   const { email, password } = req.body ?? {};
 
   if (typeof email !== "string" || typeof password !== "string") {
