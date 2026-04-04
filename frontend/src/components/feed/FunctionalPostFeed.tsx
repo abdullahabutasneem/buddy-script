@@ -15,10 +15,20 @@ export type FeedPost = {
   imageUrl: string | null;
   createdAt: string;
   author: Author;
+  likeCount: number;
+  likedByMe: boolean;
 };
 
 function byNewestFirst(a: FeedPost, b: FeedPost): number {
   return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+}
+
+function normalizePost(p: FeedPost): FeedPost {
+  return {
+    ...p,
+    likeCount: typeof p.likeCount === "number" ? p.likeCount : 0,
+    likedByMe: Boolean(p.likedByMe),
+  };
 }
 
 export function FunctionalPostFeed() {
@@ -27,6 +37,7 @@ export function FunctionalPostFeed() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [likeBusyId, setLikeBusyId] = useState<string | null>(null);
 
   const loadPosts = useCallback(async () => {
     setLoadError(null);
@@ -41,7 +52,7 @@ export function FunctionalPostFeed() {
         setPosts([]);
         return;
       }
-      const list = data.posts ?? [];
+      const list = (data.posts ?? []).map(normalizePost);
       setPosts([...list].sort(byNewestFirst));
     } catch {
       setLoadError("Network error");
@@ -54,6 +65,33 @@ export function FunctionalPostFeed() {
   useEffect(() => {
     void loadPosts();
   }, [loadPosts]);
+
+  async function toggleLike(post: FeedPost) {
+    if (likeBusyId !== null) return;
+    setLikeBusyId(post.id);
+    const method = post.likedByMe ? "DELETE" : "POST";
+    try {
+      const res = await fetch(`/api/posts/${post.id}/like`, {
+        method,
+        credentials: "include",
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        likeCount?: number;
+        likedByMe?: boolean;
+      };
+      if (!res.ok) return;
+      if (typeof data.likeCount !== "number" || typeof data.likedByMe !== "boolean") return;
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === post.id
+            ? { ...p, likeCount: data.likeCount!, likedByMe: data.likedByMe! }
+            : p,
+        ),
+      );
+    } finally {
+      setLikeBusyId(null);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -88,7 +126,9 @@ export function FunctionalPostFeed() {
         return;
       }
       if (data.post) {
-        setPosts((prev) => [data.post!, ...prev].sort(byNewestFirst));
+        setPosts((prev) =>
+          [normalizePost(data.post!), ...prev].sort(byNewestFirst),
+        );
       }
       form.reset();
     } catch {
@@ -164,6 +204,23 @@ export function FunctionalPostFeed() {
                   className="mt-2 max-h-80 w-full max-w-md rounded object-contain"
                 />
               ) : null}
+              <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-zinc-100 pt-3 dark:border-zinc-700">
+                <button
+                  type="button"
+                  disabled={likeBusyId !== null}
+                  onClick={() => void toggleLike(p)}
+                  className={`rounded px-2 py-1 text-sm font-medium disabled:opacity-50 ${
+                    p.likedByMe
+                      ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
+                      : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                  }`}
+                >
+                  {p.likedByMe ? "Unlike" : "Like"}
+                </button>
+                <span className="text-sm text-zinc-500 dark:text-zinc-400">
+                  {p.likeCount} {p.likeCount === 1 ? "like" : "likes"}
+                </span>
+              </div>
             </li>
           ))}
         </ul>

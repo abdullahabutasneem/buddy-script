@@ -3,6 +3,7 @@ import path from "node:path";
 import { Router } from "express";
 import type { NextFunction, Request, Response } from "express";
 import multer from "multer";
+import mongoose from "mongoose";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { Post } from "../models/Post.js";
 
@@ -68,32 +69,52 @@ function imagePublicUrl(filename: string | null | undefined): string | null {
   return `/uploads/posts/${filename}`;
 }
 
-router.get("/", requireAuth, async (_req, res) => {
+type LeanPost = {
+  _id: unknown;
+  text: string;
+  imageFilename: string | null;
+  createdAt: Date;
+  author: unknown;
+  likedBy?: unknown[];
+};
+
+function likeFieldsForUser(doc: { likedBy?: unknown[] }, userId: string) {
+  const ids = (doc.likedBy ?? []) as mongoose.Types.ObjectId[];
+  const likeCount = ids.length;
+  const likedByMe = ids.some((id) => String(id) === userId);
+  return { likeCount, likedByMe };
+}
+
+function serializePost(p: LeanPost, userId: string) {
+  const authorRaw = p.author as AuthorShape | null;
+  const author =
+    authorRaw && authorRaw._id != null
+      ? serializeAuthor(authorRaw)
+      : {
+          id: "",
+          firstName: "Unknown",
+          lastName: "user",
+          email: "",
+        };
+  return {
+    id: String(p._id),
+    text: p.text,
+    imageUrl: imagePublicUrl(p.imageFilename),
+    createdAt: p.createdAt,
+    author,
+    ...likeFieldsForUser(p, userId),
+  };
+}
+
+router.get("/", requireAuth, async (req, res) => {
+  const userId = req.userId!;
   const posts = await Post.find()
     .sort({ createdAt: -1 })
     .populate("author", "firstName lastName email")
     .lean();
 
   res.json({
-    posts: posts.map((p) => {
-      const authorRaw = p.author as AuthorShape | null;
-      const author =
-        authorRaw && authorRaw._id != null
-          ? serializeAuthor(authorRaw)
-          : {
-              id: "",
-              firstName: "Unknown",
-              lastName: "user",
-              email: "",
-            };
-      return {
-        id: String(p._id),
-        text: p.text,
-        imageUrl: imagePublicUrl(p.imageFilename),
-        createdAt: p.createdAt,
-        author,
-      };
-    }),
+    posts: posts.map((p) => serializePost(p as unknown as LeanPost, userId)),
   });
 });
 
@@ -128,8 +149,56 @@ router.post("/", requireAuth, uploadImageOptional, async (req, res) => {
       imageUrl: imagePublicUrl(post.imageFilename),
       createdAt: post.createdAt,
       author: serializeAuthor(author),
+      likeCount: 0,
+      likedByMe: false,
     },
   });
+});
+
+router.post("/:postId/like", requireAuth, async (req, res) => {
+  const { postId } = req.params;
+  const userId = req.userId!;
+  if (!mongoose.isValidObjectId(postId)) {
+    res.status(400).json({ error: "Invalid post id" });
+    return;
+  }
+  const updated = await Post.findByIdAndUpdate(
+    postId,
+    { $addToSet: { likedBy: userId } },
+    { new: true },
+  ).lean();
+  if (!updated || Array.isArray(updated)) {
+    res.status(404).json({ error: "Post not found" });
+    return;
+  }
+  const { likeCount, likedByMe } = likeFieldsForUser(
+    updated as { likedBy?: unknown[] },
+    userId,
+  );
+  res.json({ likeCount, likedByMe });
+});
+
+router.delete("/:postId/like", requireAuth, async (req, res) => {
+  const { postId } = req.params;
+  const userId = req.userId!;
+  if (!mongoose.isValidObjectId(postId)) {
+    res.status(400).json({ error: "Invalid post id" });
+    return;
+  }
+  const updated = await Post.findByIdAndUpdate(
+    postId,
+    { $pull: { likedBy: userId } },
+    { new: true },
+  ).lean();
+  if (!updated || Array.isArray(updated)) {
+    res.status(404).json({ error: "Post not found" });
+    return;
+  }
+  const { likeCount, likedByMe } = likeFieldsForUser(
+    updated as { likedBy?: unknown[] },
+    userId,
+  );
+  res.json({ likeCount, likedByMe });
 });
 
 export default router;
