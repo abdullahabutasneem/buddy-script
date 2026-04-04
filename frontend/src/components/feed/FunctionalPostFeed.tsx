@@ -1,27 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { LikerList } from "./LikerList";
-import { PostComments } from "./PostComments";
+import { normalizedPhotoUrl } from "@/lib/resolveAvatarUrl";
+import { computeInitials } from "@/lib/userInitials";
+import type { FeedPost } from "./feedTypes";
+import { TimelinePostCard, type FeedViewerBrief } from "./TimelinePostCard";
 
-type Author = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-};
-
-export type FeedPost = {
-  id: string;
-  text: string;
-  imageUrl: string | null;
-  createdAt: string;
-  author: Author;
-  visibility: "public" | "private";
-  likeCount: number;
-  likedByMe: boolean;
-  likedByUsers: Author[];
-};
+export type { FeedPost } from "./feedTypes";
 
 function byNewestFirst(a: FeedPost, b: FeedPost): number {
   return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -34,11 +19,12 @@ function normalizePost(p: FeedPost): FeedPost {
     likeCount: typeof p.likeCount === "number" ? p.likeCount : 0,
     likedByMe: Boolean(p.likedByMe),
     likedByUsers: Array.isArray(p.likedByUsers) ? p.likedByUsers : [],
+    commentCount: typeof p.commentCount === "number" ? p.commentCount : 0,
+    isAuthor: Boolean(p.isAuthor),
   };
 }
 
 type FunctionalPostFeedProps = {
-  /** Increment to refetch posts (e.g. after creating a post) without remounting the tree. */
   refreshNonce?: number;
 };
 
@@ -47,6 +33,7 @@ export function FunctionalPostFeed({ refreshNonce = 0 }: FunctionalPostFeedProps
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [likeBusyId, setLikeBusyId] = useState<string | null>(null);
+  const [viewer, setViewer] = useState<FeedViewerBrief>(null);
 
   const loadPosts = useCallback(async () => {
     setLoadError(null);
@@ -75,6 +62,40 @@ export function FunctionalPostFeed({ refreshNonce = 0 }: FunctionalPostFeedProps
     void loadPosts();
   }, [loadPosts, refreshNonce]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/auth/me", { credentials: "include" });
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as {
+          user?: {
+            firstName?: string;
+            lastName?: string;
+            email?: string;
+            avatarUrl?: string | null;
+          };
+        };
+        const u = data.user;
+        if (!u || cancelled) return;
+        const displayName =
+          [u.firstName, u.lastName].filter(Boolean).join(" ").trim() ||
+          u.email ||
+          "Account";
+        setViewer({
+          initials: computeInitials(u.firstName, u.lastName, u.email),
+          seed: displayName,
+          photoUrl: normalizedPhotoUrl(u.avatarUrl),
+        });
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   async function toggleLike(post: FeedPost) {
     if (likeBusyId !== null) return;
     setLikeBusyId(post.id);
@@ -87,7 +108,7 @@ export function FunctionalPostFeed({ refreshNonce = 0 }: FunctionalPostFeedProps
       const data = (await res.json().catch(() => ({}))) as {
         likeCount?: number;
         likedByMe?: boolean;
-        likedByUsers?: Author[];
+        likedByUsers?: FeedPost["likedByUsers"];
       };
       if (!res.ok) return;
       if (typeof data.likeCount !== "number" || typeof data.likedByMe !== "boolean") return;
@@ -121,51 +142,17 @@ export function FunctionalPostFeed({ refreshNonce = 0 }: FunctionalPostFeedProps
       ) : posts.length === 0 ? (
         <p className="_feed_inner_timeline_post_box_para">No posts yet. Be the first to post.</p>
       ) : (
-        <ul className="list-unstyled" style={{ marginBottom: 0 }}>
+        <ul className="list-unstyled p-0 m-0">
           {posts.map((p) => (
-            <li
+            <TimelinePostCard
               key={p.id}
-              className="_feed_inner_timeline_post_area _b_radious6 _padd_b24 _padd_t24 _mar_b16"
-            >
-              <p className="_feed_inner_timeline_post_box_para _mar_b8">
-                {p.author.firstName} {p.author.lastName} · {new Date(p.createdAt).toLocaleString()}
-                {p.visibility === "private" ? (
-                  <span className="ms-2 text-uppercase" style={{ fontSize: "11px", fontWeight: 600 }}>
-                    {" "}
-                    · Private
-                  </span>
-                ) : null}
-              </p>
-              {p.text ? (
-                <p className="_feed_inner_timeline_post_title _mar_b8" style={{ whiteSpace: "pre-wrap" }}>
-                  {p.text}
-                </p>
-              ) : null}
-              {p.imageUrl ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={p.imageUrl}
-                  alt=""
-                  className="img-fluid _mar_b8"
-                  style={{ maxHeight: "320px", objectFit: "contain" }}
-                />
-              ) : null}
-              <div className="_feed_inner_timeline_reaction _mar_t16 d-flex flex-wrap align-items-center gap-2">
-                <button
-                  type="button"
-                  disabled={likeBusyId !== null}
-                  onClick={() => void toggleLike(p)}
-                  className={`btn btn-sm ${p.likedByMe ? "btn-primary" : "btn-outline-secondary"}`}
-                >
-                  {p.likedByMe ? "Unlike" : "Like"}
-                </button>
-                <span className="_feed_inner_timeline_post_box_para" style={{ marginBottom: 0 }}>
-                  {p.likeCount} {p.likeCount === 1 ? "like" : "likes"}
-                </span>
-              </div>
-              <LikerList users={p.likedByUsers} />
-              <PostComments postId={p.id} />
-            </li>
+              post={p}
+              likeBusy={likeBusyId !== null}
+              onToggleLike={(post) => void toggleLike(post)}
+              onPostDeleted={(id) => setPosts((prev) => prev.filter((x) => x.id !== id))}
+              onCommentsChanged={() => void loadPosts()}
+              viewer={viewer}
+            />
           ))}
         </ul>
       )}

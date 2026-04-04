@@ -20,8 +20,18 @@ async function main(uri: string) {
   console.log("MongoDB connected");
 
   const app = createApp();
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`API listening on http://localhost:${PORT}`);
+  });
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(
+        `Port ${PORT} is already in use. Stop the other server (e.g. taskkill /PID <pid> /F after netstat -ano | findstr :${PORT}) or set PORT in backend/.env.`,
+      );
+    } else {
+      console.error(err);
+    }
+    process.exit(1);
   });
 }
 

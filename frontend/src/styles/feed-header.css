@@ -120,3 +120,23 @@
   height: 54px;
   font-size: 17px;
 }
+
+/* Timeline post “…” menu visibility */
+._feed_timeline_dropdown.show {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Stacked liker initials (replaces emoji PNG pile) */
+._buddy_liker_pile {
+  display: flex;
+  align-items: center;
+}
+
+._buddy_liker_pile > * {
+  margin-left: 0;
+}
+
+._buddy_liker_pile > * + * {
+  margin-left: -16px;
+}

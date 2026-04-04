@@ -88,7 +88,7 @@ function postVisibilityMatch(viewerId: string) {
   };
 }
 
-function serializePost(p: LeanPost, userId: string) {
+function serializePost(p: LeanPost, userId: string, commentCount = 0) {
   const authorRaw = p.author as AuthorShape | null;
   const author =
     authorRaw && authorRaw._id != null
@@ -100,6 +100,10 @@ function serializePost(p: LeanPost, userId: string) {
           email: "",
         };
   const visibility = p.visibility === "private" ? "private" : "public";
+  const isAuthor =
+    authorRaw != null &&
+    authorRaw._id != null &&
+    String(authorRaw._id) === userId;
   return {
     id: String(p._id),
     text: p.text,
@@ -107,6 +111,8 @@ function serializePost(p: LeanPost, userId: string) {
     createdAt: p.createdAt,
     author,
     visibility,
+    isAuthor,
+    commentCount,
     ...likeEngagement(p.likedBy, userId),
   };
 }
@@ -204,8 +210,26 @@ router.get("/", requireAuth, async (req, res) => {
     .populate("likedBy", "firstName lastName email")
     .lean();
 
+  const ids = posts.map((p) => p._id);
+  const countMap = new Map<string, number>();
+  if (ids.length > 0) {
+    const counts = await Comment.aggregate<{ _id: unknown; count: number }>([
+      { $match: { post: { $in: ids } } },
+      { $group: { _id: "$post", count: { $sum: 1 } } },
+    ]);
+    for (const row of counts) {
+      countMap.set(String(row._id), row.count);
+    }
+  }
+
   res.json({
-    posts: posts.map((p) => serializePost(p as unknown as LeanPost, userId)),
+    posts: posts.map((p) =>
+      serializePost(
+        p as unknown as LeanPost,
+        userId,
+        countMap.get(String(p._id)) ?? 0,
+      ),
+    ),
   });
 });
 
@@ -247,6 +271,8 @@ router.post("/", requireAuth, uploadImageOptional, async (req, res) => {
       createdAt: post.createdAt,
       author: serializeAuthor(author),
       visibility: postVisibility,
+      isAuthor: true,
+      commentCount: 0,
       likeCount: 0,
       likedByMe: false,
       likedByUsers: [],
@@ -391,6 +417,40 @@ router.delete("/:postId/like", requireAuth, async (req, res) => {
     return;
   }
   res.json(likeEngagement(updated.likedBy, userId));
+});
+
+router.delete("/:postId", requireAuth, async (req, res) => {
+  const postId = paramId(req.params.postId);
+  const userId = req.userId!;
+  if (!postId || !mongoose.isValidObjectId(postId)) {
+    res.status(400).json({ error: "Invalid post id" });
+    return;
+  }
+
+  const doc = await Post.findOne({
+    _id: postId,
+    author: userId,
+  }).lean();
+  if (!doc) {
+    res.status(404).json({ error: "Post not found" });
+    return;
+  }
+
+  const filename = (doc as { imageFilename?: string | null }).imageFilename;
+  if (filename) {
+    const fp = path.join(postsDir, filename);
+    if (fs.existsSync(fp)) {
+      try {
+        fs.unlinkSync(fp);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  await Comment.deleteMany({ post: postId });
+  await Post.findByIdAndDelete(postId);
+  res.json({ ok: true });
 });
 
 export default router;
