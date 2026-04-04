@@ -7,7 +7,7 @@ import mongoose from "mongoose";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { Comment } from "../models/Comment.js";
 import { Post } from "../models/Post.js";
-import { likeEngagement, type AuthorPublic } from "../utils/likes.js";
+import { likeEngagement, userIdsEqual, type AuthorPublic } from "../utils/likes.js";
 
 const postsDir = path.join(process.cwd(), "uploads", "posts");
 fs.mkdirSync(postsDir, { recursive: true });
@@ -103,7 +103,7 @@ function serializePost(p: LeanPost, userId: string, commentCount = 0) {
   const isAuthor =
     authorRaw != null &&
     authorRaw._id != null &&
-    String(authorRaw._id) === userId;
+    userIdsEqual(String(authorRaw._id), userId);
   return {
     id: String(p._id),
     text: p.text,

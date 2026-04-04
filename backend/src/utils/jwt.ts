@@ -25,6 +25,10 @@ export function verifyToken(token: string): { sub: string } {
   if (!secret) {
     throw new Error("JWT_SECRET is not set");
   }
-  const decoded = jwt.verify(token, secret) as { sub: string };
-  return decoded;
+  const decoded = jwt.verify(token, secret) as { sub?: unknown };
+  const sub = decoded.sub;
+  if (sub == null || (typeof sub !== "string" && typeof sub !== "number")) {
+    throw new Error("Invalid token subject");
+  }
+  return { sub: String(sub) };
 }

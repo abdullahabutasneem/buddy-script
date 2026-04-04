@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+
 export type AuthorPublic = {
   id: string;
   firstName: string;
@@ -42,12 +44,27 @@ function normalizeLikerIds(likedBy: unknown[] | undefined): string[] {
   );
 }
 
+/** True if two ids refer to the same user (handles ObjectId vs string quirks). */
+export function userIdsEqual(a: string, b: string): boolean {
+  const sa = String(a).trim();
+  const sb = String(b).trim();
+  if (sa === sb) return true;
+  if (mongoose.isValidObjectId(sa) && mongoose.isValidObjectId(sb)) {
+    try {
+      return new mongoose.Types.ObjectId(sa).equals(new mongoose.Types.ObjectId(sb));
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 /** Count, current user flag, and populated liker profiles (populate likedBy for names). */
 export function likeEngagement(likedBy: unknown[] | undefined, userId: string) {
   const ids = normalizeLikerIds(likedBy);
   return {
     likeCount: ids.length,
-    likedByMe: ids.some((id) => id === userId),
+    likedByMe: ids.some((id) => userIdsEqual(id, userId)),
     likedByUsers: serializeLikedByUsers(likedBy),
   };
 }

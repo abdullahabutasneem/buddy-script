@@ -16,7 +16,8 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
       res.status(401).json({ error: "Not authenticated" });
       return;
     }
-    req.userId = sub;
+    /** Canonical hex id so like/author checks match Mongo `ObjectId` string forms. */
+    req.userId = user._id.toString();
     req.user = {
       _id: user._id,
       email: user.email,
