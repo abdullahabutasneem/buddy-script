@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-/* Auto-generated from appifylab-project/feed.html — run: node scripts/convert-feed-html.mjs */
+/* Auto-generated from appifylab-project/feed.html — from repo root: node frontend/scripts/convert-feed-html.mjs */
 import Link from "next/link";
 
 export type FeedMarkupProps = {

@@ -3,9 +3,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const root = path.join(__dirname, "..");
-const htmlPath = path.join(root, "appifylab-project", "feed.html");
-const outPath = path.join(root, "src", "components", "feed", "FeedMarkup.tsx");
+const frontendRoot = path.join(__dirname, "..");
+const repoRoot = path.join(frontendRoot, "..");
+const htmlPath = path.join(repoRoot, "appifylab-project", "feed.html");
+const outPath = path.join(frontendRoot, "src", "components", "feed", "FeedMarkup.tsx");
 
 if (!fs.existsSync(htmlPath)) {
   console.error("Missing appifylab-project/feed.html — add the reference folder locally.");
