@@ -1,4 +1,8 @@
-/* Feed desktop navbar: align search, nav icons, and profile like feed.html + Bootstrap 5 */
+/*
+  Desktop navbar matches feed.html: collapse is a flex row with
+  ._header_form.ms-auto, ul.ms-auto._mar_r8, ._header_nav_profile as siblings.
+  Let Bootstrap margin utilities position the search (not centered, not forced right).
+*/
 @media (min-width: 992px) {
   #navbarSupportedContent.feed-navbar-collapse {
     flex-basis: auto;
@@ -11,27 +15,7 @@
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-end;
     width: 100%;
-    column-gap: 0.25rem;
-    row-gap: 0.5rem;
-  }
-
-  .feed-header-collapse-inner ._header_form {
-    margin-left: 0 !important;
-    margin-right: auto;
-  }
-
-  .feed-header-collapse-inner ._header_nav_list {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .feed-header-collapse-inner ._header_nav_profile {
-    flex-shrink: 0;
-    margin-left: 0.5rem;
   }
 }
 
@@ -67,4 +51,22 @@
   outline: 2px solid var(--color5, #1890ff);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/*
+  Post composer: Tailwind preflight uses `svg { display: block }`, so the pencil drops below
+  "Write something ...". Keep label text and icon on one row like the static HTML.
+*/
+._feed_inner_text_area_box_form.form-floating > label._feed_textarea_label {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+._feed_inner_text_area_box_form.form-floating > label._feed_textarea_label svg {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
 }

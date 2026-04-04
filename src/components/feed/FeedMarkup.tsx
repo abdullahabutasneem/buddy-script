@@ -70,7 +70,7 @@ export function FeedMarkup({
 						<span className="navbar-toggler-icon" />
 					</button>
 					<div
-						className="collapse navbar-collapse feed-navbar-collapse d-lg-flex flex-lg-row flex-wrap align-items-lg-center"
+						className="collapse navbar-collapse feed-navbar-collapse"
 						id="navbarSupportedContent"
 					>
 						<div className="feed-header-collapse-inner">
