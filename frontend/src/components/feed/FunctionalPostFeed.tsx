@@ -17,6 +17,10 @@ export type FeedPost = {
   author: Author;
 };
 
+function byNewestFirst(a: FeedPost, b: FeedPost): number {
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+}
+
 export function FunctionalPostFeed() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +41,8 @@ export function FunctionalPostFeed() {
         setPosts([]);
         return;
       }
-      setPosts(data.posts ?? []);
+      const list = data.posts ?? [];
+      setPosts([...list].sort(byNewestFirst));
     } catch {
       setLoadError("Network error");
       setPosts([]);
@@ -83,7 +88,7 @@ export function FunctionalPostFeed() {
         return;
       }
       if (data.post) {
-        setPosts((prev) => [data.post!, ...prev]);
+        setPosts((prev) => [data.post!, ...prev].sort(byNewestFirst));
       }
       form.reset();
     } catch {
