@@ -18,6 +18,7 @@ type FeedComposerProps = {
 
 export function FeedComposer({ onPostCreated, userAvatar }: FeedComposerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pickedFileName, setPickedFileName] = useState<string | null>(null);
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -58,6 +59,7 @@ export function FeedComposer({ onPostCreated, userAvatar }: FeedComposerProps) {
       }
       form.reset();
       setVisibility("public");
+      setPickedFileName(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       onPostCreated?.();
     } catch {
@@ -76,10 +78,15 @@ export function FeedComposer({ onPostCreated, userAvatar }: FeedComposerProps) {
         ref={fileInputRef}
         type="file"
         name="image"
-        accept="image/jpeg,image/png,image/gif,image/webp"
+        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
         className="d-none"
         aria-hidden
         tabIndex={-1}
+        onChange={() => {
+          const f = fileInputRef.current?.files?.[0];
+          setPickedFileName(f?.name ?? null);
+          setSubmitError(null);
+        }}
       />
       <div className="_feed_inner_text_area_box">
         <button
@@ -156,6 +163,11 @@ export function FeedComposer({ onPostCreated, userAvatar }: FeedComposerProps) {
           Only me
         </label>
       </p>
+      {pickedFileName ? (
+        <p className="_feed_inner_timeline_post_box_para _mar_b8" role="status">
+          Photo: {pickedFileName} — click Post to share.
+        </p>
+      ) : null}
       {submitError ? (
         <p
           className="_feed_inner_timeline_post_box_para _mar_b8"
