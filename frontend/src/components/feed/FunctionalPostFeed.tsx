@@ -17,6 +17,7 @@ export type FeedPost = {
   imageUrl: string | null;
   createdAt: string;
   author: Author;
+  visibility: "public" | "private";
   likeCount: number;
   likedByMe: boolean;
   likedByUsers: Author[];
@@ -29,6 +30,7 @@ function byNewestFirst(a: FeedPost, b: FeedPost): number {
 function normalizePost(p: FeedPost): FeedPost {
   return {
     ...p,
+    visibility: p.visibility === "private" ? "private" : "public",
     likeCount: typeof p.likeCount === "number" ? p.likeCount : 0,
     likedByMe: Boolean(p.likedByMe),
     likedByUsers: Array.isArray(p.likedByUsers) ? p.likedByUsers : [],
@@ -42,6 +44,9 @@ export function FunctionalPostFeed() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [likeBusyId, setLikeBusyId] = useState<string | null>(null);
+  const [newPostVisibility, setNewPostVisibility] = useState<"public" | "private">(
+    "public",
+  );
 
   const loadPosts = useCallback(async () => {
     setLoadError(null);
@@ -121,6 +126,7 @@ export function FunctionalPostFeed() {
     try {
       const body = new FormData();
       body.append("text", text);
+      body.append("visibility", newPostVisibility);
       if (file) body.append("image", file);
 
       const res = await fetch("/api/posts", {
@@ -142,6 +148,7 @@ export function FunctionalPostFeed() {
         );
       }
       form.reset();
+      setNewPostVisibility("public");
     } catch {
       setSubmitError("Network error");
     } finally {
@@ -180,6 +187,27 @@ export function FunctionalPostFeed() {
           accept="image/jpeg,image/png,image/gif,image/webp"
           className="block w-full text-sm"
         />
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium">Who can see this?</legend>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="buddy-post-visibility"
+              checked={newPostVisibility === "public"}
+              onChange={() => setNewPostVisibility("public")}
+            />
+            Public — everyone
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="buddy-post-visibility"
+              checked={newPostVisibility === "private"}
+              onChange={() => setNewPostVisibility("private")}
+            />
+            Private — only you
+          </label>
+        </fieldset>
         <button
           type="submit"
           disabled={submitting}
@@ -206,6 +234,11 @@ export function FunctionalPostFeed() {
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
                 {p.author.firstName} {p.author.lastName} ·{" "}
                 {new Date(p.createdAt).toLocaleString()}
+                {p.visibility === "private" ? (
+                  <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                    Private
+                  </span>
+                ) : null}
               </p>
               {p.text ? <p className="mt-2 whitespace-pre-wrap text-sm">{p.text}</p> : null}
               {p.imageUrl ? (

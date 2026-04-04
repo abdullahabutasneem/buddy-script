@@ -78,7 +78,15 @@ type LeanPost = {
   createdAt: Date;
   author: unknown;
   likedBy?: unknown[];
+  visibility?: string;
 };
+
+/** Viewer can see post if it is not private, or they are the author. */
+function postVisibilityMatch(viewerId: string) {
+  return {
+    $or: [{ author: viewerId }, { visibility: { $ne: "private" } }],
+  };
+}
 
 function serializePost(p: LeanPost, userId: string) {
   const authorRaw = p.author as AuthorShape | null;
@@ -91,12 +99,14 @@ function serializePost(p: LeanPost, userId: string) {
           lastName: "user",
           email: "",
         };
+  const visibility = p.visibility === "private" ? "private" : "public";
   return {
     id: String(p._id),
     text: p.text,
     imageUrl: imagePublicUrl(p.imageFilename),
     createdAt: p.createdAt,
     author,
+    visibility,
     ...likeEngagement(p.likedBy, userId),
   };
 }
@@ -188,7 +198,7 @@ function nestCommentTree(flat: FlatComment[]): NestedComment[] {
 
 router.get("/", requireAuth, async (req, res) => {
   const userId = req.userId!;
-  const posts = await Post.find()
+  const posts = await Post.find(postVisibilityMatch(userId))
     .sort({ createdAt: -1 })
     .populate("author", "firstName lastName email")
     .populate("likedBy", "firstName lastName email")
@@ -214,15 +224,21 @@ router.post("/", requireAuth, uploadImageOptional, async (req, res) => {
     return;
   }
 
+  const visRaw = req.body?.visibility;
+  const visibility =
+    visRaw === "private" || visRaw === "public" ? visRaw : "public";
+
   const post = await Post.create({
     author: req.userId!,
     text,
     imageFilename: file?.filename ?? null,
+    visibility,
   });
 
   await post.populate("author", "firstName lastName email");
   const author = post.author as AuthorShape;
 
+  const postVisibility = post.visibility === "private" ? "private" : "public";
   res.status(201).json({
     post: {
       id: post._id.toString(),
@@ -230,6 +246,7 @@ router.post("/", requireAuth, uploadImageOptional, async (req, res) => {
       imageUrl: imagePublicUrl(post.imageFilename),
       createdAt: post.createdAt,
       author: serializeAuthor(author),
+      visibility: postVisibility,
       likeCount: 0,
       likedByMe: false,
       likedByUsers: [],
@@ -249,7 +266,12 @@ router.get("/:postId/comments", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Invalid post id" });
     return;
   }
-  const post = await Post.findById(postId).select("_id").lean();
+  const post = await Post.findOne({
+    _id: postId,
+    ...postVisibilityMatch(userId),
+  })
+    .select("_id")
+    .lean();
   if (!post) {
     res.status(404).json({ error: "Post not found" });
     return;
@@ -304,7 +326,12 @@ router.post("/:postId/comments", requireAuth, async (req, res) => {
     parentComment = parentRaw;
   }
 
-  const post = await Post.findById(postId).select("_id").lean();
+  const post = await Post.findOne({
+    _id: postId,
+    ...postVisibilityMatch(userId),
+  })
+    .select("_id")
+    .lean();
   if (!post) {
     res.status(404).json({ error: "Post not found" });
     return;
@@ -331,8 +358,8 @@ router.post("/:postId/like", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Invalid post id" });
     return;
   }
-  const updated = await Post.findByIdAndUpdate(
-    postId,
+  const updated = await Post.findOneAndUpdate(
+    { _id: postId, ...postVisibilityMatch(userId) },
     { $addToSet: { likedBy: userId } },
     { new: true },
   )
@@ -352,8 +379,8 @@ router.delete("/:postId/like", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Invalid post id" });
     return;
   }
-  const updated = await Post.findByIdAndUpdate(
-    postId,
+  const updated = await Post.findOneAndUpdate(
+    { _id: postId, ...postVisibilityMatch(userId) },
     { $pull: { likedBy: userId } },
     { new: true },
   )
