@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- legacy markup; swap to next/image when optimizing */
 import Link from "next/link";
+import { RegisterForm } from "@/components/auth/RegisterForm";
 
 export default function RegisterPage() {
   return (
@@ -82,89 +83,7 @@ export default function RegisterPage() {
                 <div className="_social_registration_content_bottom_txt _mar_b40">
                   <span>Or</span>
                 </div>
-                <form className="_social_registration_form">
-                  <div className="row">
-                    <div className="col-xl-12 col-lg-12 col-md-12 col-sm-12">
-                      <div className="_social_registration_form_input _mar_b14">
-                        <label
-                          className="_social_registration_label _mar_b8"
-                          htmlFor="register-email"
-                        >
-                          Email
-                        </label>
-                        <input
-                          id="register-email"
-                          type="email"
-                          className="form-control _social_registration_input"
-                          autoComplete="email"
-                        />
-                      </div>
-                    </div>
-                    <div className="col-xl-12 col-lg-12 col-md-12 col-sm-12">
-                      <div className="_social_registration_form_input _mar_b14">
-                        <label
-                          className="_social_registration_label _mar_b8"
-                          htmlFor="register-password"
-                        >
-                          Password
-                        </label>
-                        <input
-                          id="register-password"
-                          type="password"
-                          className="form-control _social_registration_input"
-                          autoComplete="new-password"
-                        />
-                      </div>
-                    </div>
-                    <div className="col-xl-12 col-lg-12 col-md-12 col-sm-12">
-                      <div className="_social_registration_form_input _mar_b14">
-                        <label
-                          className="_social_registration_label _mar_b8"
-                          htmlFor="register-password-repeat"
-                        >
-                          Repeat Password
-                        </label>
-                        <input
-                          id="register-password-repeat"
-                          type="password"
-                          className="form-control _social_registration_input"
-                          autoComplete="new-password"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="row">
-                    <div className="col-lg-12 col-xl-12 col-md-12 col-sm-12">
-                      <div className="form-check _social_registration_form_check">
-                        <input
-                          className="form-check-input _social_registration_form_check_input"
-                          type="radio"
-                          name="registrationTerms"
-                          id="registration-terms"
-                          defaultChecked
-                        />
-                        <label
-                          className="form-check-label _social_registration_form_check_label"
-                          htmlFor="registration-terms"
-                        >
-                          I agree to terms & conditions
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="row">
-                    <div className="col-lg-12 col-md-12 col-xl-12 col-sm-12">
-                      <div className="_social_registration_form_btn _mar_t40 _mar_b60">
-                        <button
-                          type="button"
-                          className="_social_registration_form_btn_link _btn1"
-                        >
-                          Register now
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </form>
+                <RegisterForm />
                 <div className="row">
                   <div className="col-xl-12 col-lg-12 col-md-12 col-sm-12">
                     <div className="_social_registration_bottom_txt">

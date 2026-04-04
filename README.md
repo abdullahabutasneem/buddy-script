@@ -22,11 +22,24 @@ npm run lint
 
 ```bash
 cp backend/.env.example backend/.env
-# Edit backend/.env — set MONGODB_URI (and PORT if you want)
+# Edit backend/.env — MONGODB_URI, JWT_SECRET (≥16 chars), FRONTEND_ORIGIN
 npm run dev:backend
 ```
 
-- Health check: `GET http://localhost:4000/api/health` (default port from `.env.example`)
+**Auth (JWT in httpOnly cookie):** the browser calls **`/api/...` on the Next app** (port 3000); Next **rewrites** those requests to the Express server (`BACKEND_URL`, default `http://127.0.0.1:4000`). The session cookie is set on **localhost:3000**, so middleware can protect pages.
+
+```bash
+cp frontend/.env.example frontend/.env.local
+# Use the same JWT_SECRET string as in backend/.env
+```
+
+Run **both** in development: `npm run dev` and `npm run dev:backend` (two terminals).
+
+- Register / login: `/register`, `/login` → redirects to **`/feed`** when successful.
+- **`/feed`**, **`/friends`**, **`/messages`**, **`/profile`** require a valid session cookie.
+- API: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` (requires cookie).
+
+- Health check: `GET http://localhost:4000/api/health` (direct to Express)
 
 ```bash
 npm run build:backend
