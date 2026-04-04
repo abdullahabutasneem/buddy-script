@@ -9,6 +9,7 @@ import { FeedMarkup, type FeedHeaderProfile } from "./FeedMarkup";
 import { FunctionalPostFeed } from "./FunctionalPostFeed";
 
 export function FeedClient() {
+  const [sessionReady, setSessionReady] = useState(false);
   const [headerProfile, setHeaderProfile] = useState<FeedHeaderProfile | null>(
     null,
   );
@@ -53,7 +54,11 @@ export function FeedClient() {
     void (async () => {
       try {
         const res = await fetch("/api/auth/me", { credentials: "include" });
-        if (!res.ok || cancelled) return;
+        if (cancelled) return;
+        if (!res.ok) {
+          window.location.replace("/login");
+          return;
+        }
         const data = (await res.json()) as {
           user?: {
             firstName?: string;
@@ -63,7 +68,10 @@ export function FeedClient() {
           };
         };
         const u = data.user;
-        if (!u || cancelled) return;
+        if (!u || cancelled) {
+          window.location.replace("/login");
+          return;
+        }
         const displayName =
           [u.firstName, u.lastName].filter(Boolean).join(" ").trim() ||
           u.email ||
@@ -73,14 +81,23 @@ export function FeedClient() {
           initials: computeInitials(u.firstName, u.lastName, u.email),
           photoUrl: normalizedPhotoUrl(u.avatarUrl),
         });
+        setSessionReady(true);
       } catch {
-        /* leave null */
+        if (!cancelled) window.location.replace("/login");
       }
     })();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  if (!sessionReady) {
+    return (
+      <div className="_layout _layout_main_wrapper _padd_t40 _padd_b40">
+        <p className="_feed_inner_timeline_post_box_para text-center">Loading…</p>
+      </div>
+    );
+  }
 
   return (
     <>

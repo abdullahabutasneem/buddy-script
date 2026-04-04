@@ -1,12 +1,26 @@
-import { jwtVerify } from "jose";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { verifyBuddyJwt } from "@/lib/verifyBuddyJwt";
 
 const AUTH_COOKIE = "buddy_token";
+
+const PROTECTED_BASES = ["/feed", "/friends", "/messages", "/profile"] as const;
+
+function pathnameNeedsAuth(pathname: string): boolean {
+  return PROTECTED_BASES.some(
+    (base) => pathname === base || pathname.startsWith(`${base}/`),
+  );
+}
 
 let loggedJwtSecretWarning = false;
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (!pathnameNeedsAuth(pathname)) {
+    return NextResponse.next();
+  }
+
   const secret = process.env.JWT_SECRET;
   if (!secret || secret.length < 16) {
     if (!loggedJwtSecretWarning) {
@@ -24,7 +38,7 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    await jwtVerify(token, new TextEncoder().encode(secret));
+    await verifyBuddyJwt(token, secret);
     return NextResponse.next();
   } catch {
     const res = NextResponse.redirect(new URL("/login", request.url));
@@ -33,15 +47,12 @@ export async function middleware(request: NextRequest) {
   }
 }
 
+/**
+ * Match almost all paths so /feed is never skipped (Next matcher quirks on some versions).
+ * Auth runs only when pathnameNeedsAuth() is true.
+ */
 export const config = {
   matcher: [
-    "/feed",
-    "/feed/:path*",
-    "/friends",
-    "/friends/:path*",
-    "/messages",
-    "/messages/:path*",
-    "/profile",
-    "/profile/:path*",
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 };
