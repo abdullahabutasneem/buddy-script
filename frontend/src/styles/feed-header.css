@@ -71,6 +71,91 @@
   flex-shrink: 0;
 }
 
+/*
+  Post Like / Comment / Share row: Tailwind preflight uses `svg { display: block }`, so each
+  icon stacks above its label and buttons can look like separate lines. Match feed.html layout.
+*/
+._feed_inner_timeline_reaction {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+
+._feed_inner_timeline_reaction_link > span {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+._feed_inner_timeline_reaction ._feed_inner_timeline_reaction_link svg,
+._feed_inner_timeline_reaction ._reaction_svg {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* Comment composer: keep avatar row + mic/photo/post on one line; preflight-safe icons */
+._feed_inner_comment_box_form {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+}
+
+._feed_inner_comment_box_content {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+._feed_inner_comment_box_icon {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+._feed_inner_comment_box_icon_btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+._feed_inner_comment_box_icon_btn svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+._feed_inner_comment_box_post_btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Profile dropdown: icon + label on one baseline (Tailwind svg { display: block } breaks flow) */
+._nav_drop_info {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0;
+  min-width: 0;
+}
+
+._nav_drop_info > span {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+._nav_drop_info > span svg {
+  display: block;
+}
+
 /* Letter / initials avatars (no stock photo) */
 ._buddy_initials_avatar {
   display: inline-flex;
