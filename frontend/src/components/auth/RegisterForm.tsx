@@ -18,7 +18,11 @@ export function RegisterForm() {
       encType="multipart/form-data"
     >
       {state.error ? (
-        <p className="text-sm text-red-600 _mar_b14" role="alert">
+        <p
+          className="_auth_form_error"
+          role="alert"
+          aria-live="polite"
+        >
           {state.error}
         </p>
       ) : null}

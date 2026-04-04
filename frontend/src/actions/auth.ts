@@ -2,6 +2,10 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import {
+  friendlyHttpError,
+  readApiJsonBody,
+} from "@/lib/apiErrors";
 import { extractBuddyTokenFromFetchResponse } from "@/lib/authCookie";
 
 const backendUrl = process.env.BACKEND_URL || "http://127.0.0.1:4000";
@@ -26,20 +30,27 @@ export async function loginAction(
     return { error: "Email and password are required" };
   }
 
+  const emailTrim = email.trim();
+  if (!emailTrim) {
+    return { error: "Email is required" };
+  }
+
   let res: Response;
   try {
     res = await fetch(`${backendUrl}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email: emailTrim, password }),
     });
   } catch {
-    return { error: "Cannot reach API. Is the backend running?" };
+    return { error: "Cannot reach the server. Check that the backend is running and BACKEND_URL is correct." };
   }
 
-  const data = (await res.json().catch(() => ({}))) as { error?: string };
+  const data = await readApiJsonBody(res);
   if (!res.ok) {
-    return { error: data.error ?? "Login failed" };
+    return {
+      error: friendlyHttpError(res, data, "Sign in failed"),
+    };
   }
 
   const token = extractBuddyTokenFromFetchResponse(res);
@@ -78,6 +89,14 @@ export async function registerAction(
     return { error: "Passwords do not match" };
   }
 
+  if (!firstName.trim() || !lastName.trim()) {
+    return { error: "First and last name are required" };
+  }
+
+  if (!email.trim()) {
+    return { error: "Email is required" };
+  }
+
   const outgoing = new FormData();
   outgoing.append("firstName", firstName.trim());
   outgoing.append("lastName", lastName.trim());
@@ -96,19 +115,21 @@ export async function registerAction(
       body: outgoing,
     });
   } catch {
-    return { error: "Cannot reach API. Is the backend running?" };
+    return { error: "Cannot reach the server. Check that the backend is running and BACKEND_URL is correct." };
   }
 
-  const data = (await res.json().catch(() => ({}))) as { error?: string };
+  const data = await readApiJsonBody(res);
   if (!res.ok) {
-    return { error: data.error ?? "Registration failed" };
+    return {
+      error: friendlyHttpError(res, data, "Registration failed"),
+    };
   }
 
   const token = extractBuddyTokenFromFetchResponse(res);
   if (!token) {
     return {
       error:
-        "Session could not be created. Check BACKEND_URL and that the API sets buddy_token.",
+        "Session could not be created. Check BACKEND_URL and that the API sets the buddy_token cookie.",
     };
   }
 
