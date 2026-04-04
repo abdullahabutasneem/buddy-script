@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 /* Auto-generated from appifylab-project/feed.html — from repo root: node frontend/scripts/convert-feed-html.mjs */
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 export type FeedMarkupProps = {
@@ -11,6 +12,8 @@ export type FeedMarkupProps = {
   onNotifyClick: () => void;
   onProfileToggleClick: () => void;
   onTimelineToggleClick: () => void;
+  /** When set, shows real posts UI and hides the legacy “write something” composer. */
+  functionalFeed?: ReactNode;
 };
 
 export function FeedMarkup({
@@ -22,6 +25,7 @@ export function FeedMarkup({
   onNotifyClick,
   onProfileToggleClick,
   onTimelineToggleClick,
+  functionalFeed,
 }: FeedMarkupProps) {
   return (
     <div className="feed-markup-root" style={{ display: "contents" }}>
@@ -1022,7 +1026,10 @@ export function FeedMarkup({
 										</div>
 									</div>
 									{/* For Mobile End */}
-									<div className="_feed_inner_text_area  _b_radious6 _padd_b24 _padd_t24 _padd_r24 _padd_l24 _mar_b16">
+									{functionalFeed}
+									<div
+										className={`_feed_inner_text_area  _b_radious6 _padd_b24 _padd_t24 _padd_r24 _padd_l24 _mar_b16${functionalFeed ? " d-none" : ""}`}
+									>
 										<div className="_feed_inner_text_area_box">
 											<div className="_feed_inner_text_area_box_image">
 												<img src="/assets/images/txt_img.png" alt="Image" className="_txt_img" />

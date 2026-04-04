@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import Script from "next/script";
 import { FeedMarkup } from "./FeedMarkup";
+import { FunctionalPostFeed } from "./FunctionalPostFeed";
 
 export function FeedClient() {
   const [darkMode, setDarkMode] = useState(false);
@@ -44,6 +45,7 @@ export function FeedClient() {
         onNotifyClick={toggleNotify}
         onProfileToggleClick={toggleProfile}
         onTimelineToggleClick={toggleTimeline}
+        functionalFeed={<FunctionalPostFeed />}
       />
       <Script src="/js/bootstrap.bundle.min.js" strategy="afterInteractive" />
     </>
