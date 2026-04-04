@@ -2,10 +2,12 @@
 
 import { useCallback, useState } from "react";
 import Script from "next/script";
+import { FeedComposer } from "./FeedComposer";
 import { FeedMarkup } from "./FeedMarkup";
 import { FunctionalPostFeed } from "./FunctionalPostFeed";
 
 export function FeedClient() {
+  const [feedRefreshKey, setFeedRefreshKey] = useState(0);
   const [darkMode, setDarkMode] = useState(false);
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -37,7 +39,12 @@ export function FeedClient() {
         onDarkModeClick={toggleDark}
         onNotifyClick={toggleNotify}
         onProfileToggleClick={toggleProfile}
-        functionalFeed={<FunctionalPostFeed />}
+        composerSlot={
+          <FeedComposer
+            onPostCreated={() => setFeedRefreshKey((k) => k + 1)}
+          />
+        }
+        feedPostsSlot={<FunctionalPostFeed refreshNonce={feedRefreshKey} />}
       />
       <Script src="/js/bootstrap.bundle.min.js" strategy="afterInteractive" />
     </>

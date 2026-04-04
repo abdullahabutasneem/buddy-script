@@ -12,8 +12,8 @@ type LikerListProps = {
 export function LikerList({ users }: LikerListProps) {
   if (users.length === 0) return null;
   return (
-    <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-      <span className="font-medium text-zinc-700 dark:text-zinc-300">Liked by </span>
+    <p className="_feed_inner_timeline_post_box_para _mar_t8" style={{ marginBottom: 0 }}>
+      <span style={{ fontWeight: 500 }}>Liked by </span>
       {users.map((u, i) => (
         <span key={u.id}>
           {i > 0 ? ", " : ""}
