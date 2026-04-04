@@ -20,6 +20,8 @@ export type FeedMarkupProps = {
   onDarkModeClick: () => void;
   onNotifyClick: () => void;
   onProfileToggleClick: () => void;
+  /** Clear session and leave the feed (e.g. redirect to login). */
+  onLogoutClick: () => void;
   /** Themed composer (write something, Photo, Post, …) — after stories, before the feed list. */
   composerSlot?: ReactNode;
   /** Post list / interactive feed below the composer. */
@@ -34,6 +36,7 @@ export function FeedMarkup({
   onDarkModeClick,
   onNotifyClick,
   onProfileToggleClick,
+  onLogoutClick,
   composerSlot,
   feedPostsSlot,
 }: FeedMarkupProps) {
@@ -632,7 +635,12 @@ export function FeedMarkup({
 										</a>
 									</li>
 									<li className="_nav_dropdown_list_item">
-										<a href="#" className="_nav_dropdown_link">
+										<button
+											type="button"
+											className="_nav_dropdown_link border-0 bg-transparent w-100 p-0 text-start"
+											style={{ cursor: "pointer" }}
+											onClick={() => onLogoutClick()}
+										>
 											<div className="_nav_drop_info">
 												<span>
 													<svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" fill="none" viewBox="0 0 19 19">
@@ -641,12 +649,12 @@ export function FeedMarkup({
 												</span>
 												Log Out		
 											</div>
-											<button type="button" className="_nav_drop_btn_link">
+											<span className="_nav_drop_btn_link d-inline-flex align-items-center" aria-hidden>
 												<svg xmlns="http://www.w3.org/2000/svg" width="6" height="10" fill="none" viewBox="0 0 6 10">
 													<path fill="#112032" d="M5 5l.354.354L5.707 5l-.353-.354L5 5zM1.354 9.354l4-4-.708-.708-4 4 .708.708zm4-4.708l-4-4-.708.708 4 4 .708-.708z" opacity=".5"/>
 												</svg>												  
-											</button>
-										</a>
+											</span>
+										</button>
 									</li>
 								</ul>
 							</div>

@@ -31,6 +31,19 @@ export function FeedClient() {
     setNotifyOpen(false);
   }, []);
 
+  const handleLogout = useCallback(async () => {
+    setProfileOpen(false);
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      /* still clear client session below */
+    }
+    window.location.replace("/login");
+  }, []);
+
   const layoutClassName = `_layout _layout_main_wrapper${darkMode ? " _dark_wrapper" : ""}`;
   const notifyDropdownClassName = `_notification_dropdown${notifyOpen ? " show" : ""}`;
   const profileDropdownClassName = `_nav_profile_dropdown _profile_dropdown${profileOpen ? " show" : ""}`;
@@ -79,6 +92,7 @@ export function FeedClient() {
         onDarkModeClick={toggleDark}
         onNotifyClick={toggleNotify}
         onProfileToggleClick={toggleProfile}
+        onLogoutClick={() => void handleLogout()}
         composerSlot={
           <FeedComposer
             onPostCreated={() => setFeedRefreshKey((k) => k + 1)}
