@@ -885,7 +885,9 @@
 ._header_nav_dropdown_btn {
     border: 1px solid transparent;
     background: transparent;
-    margin: -3px 0 0 8px;
+    margin: 0 0 0 8px;
+    padding: 0;
+    line-height: 0;
 }
 /*------ Desktop Menu End --------*/
 

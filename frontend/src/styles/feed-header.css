@@ -17,6 +17,44 @@
     align-items: center;
     width: 100%;
   }
+
+  /*
+    Profile sits beside `ul._header_nav_list`; nav icons live in tall padded `.nav-link` rows.
+    Stretch this block to the same row height and vertically center contents so the avatar
+    lines up with the icon column.
+  */
+  .feed-header-collapse-inner ._header_nav_profile {
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    margin-left: 12px;
+    flex-shrink: 0;
+  }
+
+  .feed-header-collapse-inner ._header_nav_profile_image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .feed-header-collapse-inner ._header_nav_para {
+    margin: 0 !important;
+  }
+
+  .feed-header-collapse-inner ._header_nav_dropdown_btn {
+    margin-top: 0;
+    margin-bottom: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .feed-header-collapse-inner ._header_nav_link {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 @media (max-width: 991.98px) {
