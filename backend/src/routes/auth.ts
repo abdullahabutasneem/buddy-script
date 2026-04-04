@@ -181,7 +181,7 @@ router.post("/login", authWriteLimiter, async (req, res) => {
     return;
   }
   const emailNorm = email.trim().toLowerCase();
-  const user = await User.findOne({ email: emailNorm });
+  const user = await User.findOne({ email: emailNorm }).select("+passwordHash");
   if (!user) {
     res.status(401).json({ error: "Invalid email or password" });
     return;
