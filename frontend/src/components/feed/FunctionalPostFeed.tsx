@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { LikerList } from "./LikerList";
 import { PostComments } from "./PostComments";
 
 type Author = {
@@ -18,6 +19,7 @@ export type FeedPost = {
   author: Author;
   likeCount: number;
   likedByMe: boolean;
+  likedByUsers: Author[];
 };
 
 function byNewestFirst(a: FeedPost, b: FeedPost): number {
@@ -29,6 +31,7 @@ function normalizePost(p: FeedPost): FeedPost {
     ...p,
     likeCount: typeof p.likeCount === "number" ? p.likeCount : 0,
     likedByMe: Boolean(p.likedByMe),
+    likedByUsers: Array.isArray(p.likedByUsers) ? p.likedByUsers : [],
   };
 }
 
@@ -79,13 +82,20 @@ export function FunctionalPostFeed() {
       const data = (await res.json().catch(() => ({}))) as {
         likeCount?: number;
         likedByMe?: boolean;
+        likedByUsers?: Author[];
       };
       if (!res.ok) return;
       if (typeof data.likeCount !== "number" || typeof data.likedByMe !== "boolean") return;
+      const likedByUsers = Array.isArray(data.likedByUsers) ? data.likedByUsers : [];
       setPosts((prev) =>
         prev.map((p) =>
           p.id === post.id
-            ? { ...p, likeCount: data.likeCount!, likedByMe: data.likedByMe! }
+            ? {
+                ...p,
+                likeCount: data.likeCount!,
+                likedByMe: data.likedByMe!,
+                likedByUsers,
+              }
             : p,
         ),
       );
@@ -222,6 +232,7 @@ export function FunctionalPostFeed() {
                   {p.likeCount} {p.likeCount === 1 ? "like" : "likes"}
                 </span>
               </div>
+              <LikerList users={p.likedByUsers} />
               <PostComments postId={p.id} />
             </li>
           ))}

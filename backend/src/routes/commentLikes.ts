@@ -2,21 +2,19 @@ import { Router } from "express";
 import mongoose from "mongoose";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { Comment } from "../models/Comment.js";
+import { likeEngagement } from "../utils/likes.js";
 
 const router = Router();
 
-function likeFieldsForUser(doc: { likedBy?: unknown[] }, userId: string) {
-  const ids = (doc.likedBy ?? []) as mongoose.Types.ObjectId[];
-  return {
-    likeCount: ids.length,
-    likedByMe: ids.some((id) => String(id) === userId),
-  };
+function paramId(value: string | string[] | undefined): string | undefined {
+  if (value == null) return undefined;
+  return Array.isArray(value) ? value[0] : value;
 }
 
 router.post("/:commentId/like", requireAuth, async (req, res) => {
-  const { commentId } = req.params;
+  const commentId = paramId(req.params.commentId);
   const userId = req.userId!;
-  if (!mongoose.isValidObjectId(commentId)) {
+  if (!commentId || !mongoose.isValidObjectId(commentId)) {
     res.status(400).json({ error: "Invalid comment id" });
     return;
   }
@@ -24,18 +22,20 @@ router.post("/:commentId/like", requireAuth, async (req, res) => {
     commentId,
     { $addToSet: { likedBy: userId } },
     { new: true },
-  ).lean();
+  )
+    .populate("likedBy", "firstName lastName email")
+    .lean();
   if (!updated || Array.isArray(updated)) {
     res.status(404).json({ error: "Comment not found" });
     return;
   }
-  res.json(likeFieldsForUser(updated as { likedBy?: unknown[] }, userId));
+  res.json(likeEngagement(updated.likedBy, userId));
 });
 
 router.delete("/:commentId/like", requireAuth, async (req, res) => {
-  const { commentId } = req.params;
+  const commentId = paramId(req.params.commentId);
   const userId = req.userId!;
-  if (!mongoose.isValidObjectId(commentId)) {
+  if (!commentId || !mongoose.isValidObjectId(commentId)) {
     res.status(400).json({ error: "Invalid comment id" });
     return;
   }
@@ -43,12 +43,14 @@ router.delete("/:commentId/like", requireAuth, async (req, res) => {
     commentId,
     { $pull: { likedBy: userId } },
     { new: true },
-  ).lean();
+  )
+    .populate("likedBy", "firstName lastName email")
+    .lean();
   if (!updated || Array.isArray(updated)) {
     res.status(404).json({ error: "Comment not found" });
     return;
   }
-  res.json(likeFieldsForUser(updated as { likedBy?: unknown[] }, userId));
+  res.json(likeEngagement(updated.likedBy, userId));
 });
 
 export default router;

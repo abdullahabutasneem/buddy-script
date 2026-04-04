@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { Comment } from "../models/Comment.js";
 import { Post } from "../models/Post.js";
+import { likeEngagement, type AuthorPublic } from "../utils/likes.js";
 
 const postsDir = path.join(process.cwd(), "uploads", "posts");
 fs.mkdirSync(postsDir, { recursive: true });
@@ -79,13 +80,6 @@ type LeanPost = {
   likedBy?: unknown[];
 };
 
-function likeFieldsForUser(doc: { likedBy?: unknown[] }, userId: string) {
-  const ids = (doc.likedBy ?? []) as mongoose.Types.ObjectId[];
-  const likeCount = ids.length;
-  const likedByMe = ids.some((id) => String(id) === userId);
-  return { likeCount, likedByMe };
-}
-
 function serializePost(p: LeanPost, userId: string) {
   const authorRaw = p.author as AuthorShape | null;
   const author =
@@ -103,7 +97,7 @@ function serializePost(p: LeanPost, userId: string) {
     imageUrl: imagePublicUrl(p.imageFilename),
     createdAt: p.createdAt,
     author,
-    ...likeFieldsForUser(p, userId),
+    ...likeEngagement(p.likedBy, userId),
   };
 }
 
@@ -125,6 +119,7 @@ type FlatComment = {
   author: ReturnType<typeof serializeAuthor>;
   likeCount: number;
   likedByMe: boolean;
+  likedByUsers: AuthorPublic[];
 };
 
 type NestedComment = FlatComment & { replies: NestedComment[] };
@@ -154,7 +149,7 @@ function serializeCommentRow(
     text: c.text,
     createdAt: c.createdAt,
     author,
-    ...likeFieldsForUser(c, userId),
+    ...likeEngagement(c.likedBy, userId),
   };
 }
 
@@ -196,6 +191,7 @@ router.get("/", requireAuth, async (req, res) => {
   const posts = await Post.find()
     .sort({ createdAt: -1 })
     .populate("author", "firstName lastName email")
+    .populate("likedBy", "firstName lastName email")
     .lean();
 
   res.json({
@@ -236,6 +232,7 @@ router.post("/", requireAuth, uploadImageOptional, async (req, res) => {
       author: serializeAuthor(author),
       likeCount: 0,
       likedByMe: false,
+      likedByUsers: [],
     },
   });
 });
@@ -260,6 +257,7 @@ router.get("/:postId/comments", requireAuth, async (req, res) => {
   const rows = await Comment.find({ post: postId })
     .sort({ createdAt: 1 })
     .populate("author", "firstName lastName email")
+    .populate("likedBy", "firstName lastName email")
     .lean();
 
   const flat = rows.map((c) =>
@@ -319,6 +317,7 @@ router.post("/:postId/comments", requireAuth, async (req, res) => {
     text,
   });
   await doc.populate("author", "firstName lastName email");
+  await doc.populate("likedBy", "firstName lastName email");
   const row = doc.toObject() as unknown as LeanCommentDoc;
   res.status(201).json({
     comment: { ...serializeCommentRow(row, userId, postId), replies: [] },
@@ -326,9 +325,9 @@ router.post("/:postId/comments", requireAuth, async (req, res) => {
 });
 
 router.post("/:postId/like", requireAuth, async (req, res) => {
-  const { postId } = req.params;
+  const postId = paramId(req.params.postId);
   const userId = req.userId!;
-  if (!mongoose.isValidObjectId(postId)) {
+  if (!postId || !mongoose.isValidObjectId(postId)) {
     res.status(400).json({ error: "Invalid post id" });
     return;
   }
@@ -336,22 +335,20 @@ router.post("/:postId/like", requireAuth, async (req, res) => {
     postId,
     { $addToSet: { likedBy: userId } },
     { new: true },
-  ).lean();
+  )
+    .populate("likedBy", "firstName lastName email")
+    .lean();
   if (!updated || Array.isArray(updated)) {
     res.status(404).json({ error: "Post not found" });
     return;
   }
-  const { likeCount, likedByMe } = likeFieldsForUser(
-    updated as { likedBy?: unknown[] },
-    userId,
-  );
-  res.json({ likeCount, likedByMe });
+  res.json(likeEngagement(updated.likedBy, userId));
 });
 
 router.delete("/:postId/like", requireAuth, async (req, res) => {
-  const { postId } = req.params;
+  const postId = paramId(req.params.postId);
   const userId = req.userId!;
-  if (!mongoose.isValidObjectId(postId)) {
+  if (!postId || !mongoose.isValidObjectId(postId)) {
     res.status(400).json({ error: "Invalid post id" });
     return;
   }
@@ -359,16 +356,14 @@ router.delete("/:postId/like", requireAuth, async (req, res) => {
     postId,
     { $pull: { likedBy: userId } },
     { new: true },
-  ).lean();
+  )
+    .populate("likedBy", "firstName lastName email")
+    .lean();
   if (!updated || Array.isArray(updated)) {
     res.status(404).json({ error: "Post not found" });
     return;
   }
-  const { likeCount, likedByMe } = likeFieldsForUser(
-    updated as { likedBy?: unknown[] },
-    userId,
-  );
-  res.json({ likeCount, likedByMe });
+  res.json(likeEngagement(updated.likedBy, userId));
 });
 
 export default router;

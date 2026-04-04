@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { LikerList } from "./LikerList";
 
 type CommentAuthor = {
   id: string;
@@ -18,6 +19,7 @@ export type NestedComment = {
   author: CommentAuthor;
   likeCount: number;
   likedByMe: boolean;
+  likedByUsers: CommentAuthor[];
   replies: NestedComment[];
 };
 
@@ -26,6 +28,7 @@ function normalizeComment(c: NestedComment): NestedComment {
     ...c,
     likeCount: typeof c.likeCount === "number" ? c.likeCount : 0,
     likedByMe: Boolean(c.likedByMe),
+    likedByUsers: Array.isArray(c.likedByUsers) ? c.likedByUsers : [],
     replies: (c.replies ?? []).map(normalizeComment),
   };
 }
@@ -37,7 +40,9 @@ function countComments(nodes: NestedComment[]): number {
 function patchCommentTree(
   nodes: NestedComment[],
   id: string,
-  patch: Partial<Pick<NestedComment, "likeCount" | "likedByMe">>,
+  patch: Partial<
+    Pick<NestedComment, "likeCount" | "likedByMe" | "likedByUsers">
+  >,
 ): NestedComment[] {
   return nodes.map((n) => {
     if (n.id === id) return { ...n, ...patch };
@@ -134,14 +139,17 @@ export function PostComments({ postId }: PostCommentsProps) {
       const data = (await res.json().catch(() => ({}))) as {
         likeCount?: number;
         likedByMe?: boolean;
+        likedByUsers?: CommentAuthor[];
       };
       if (!res.ok) return;
       if (typeof data.likeCount !== "number" || typeof data.likedByMe !== "boolean") return;
+      const likedByUsers = Array.isArray(data.likedByUsers) ? data.likedByUsers : [];
       setComments((prev) => {
         if (!prev) return prev;
         return patchCommentTree(prev, node.id, {
           likeCount: data.likeCount!,
           likedByMe: data.likedByMe!,
+          likedByUsers,
         });
       });
     } finally {
@@ -292,6 +300,7 @@ function CommentBranch({
             Reply
           </button>
         </div>
+        <LikerList users={node.likedByUsers} />
 
         {replyToId === node.id ? (
           <form
