@@ -137,44 +137,24 @@ s = s.replace(
   '<div id="_prfoile_drop" className={profileDropdownClassName}>',
 );
 
-s = s.replace(
-  /<button type="button" id="_timeline_show_drop_btn" className="_feed_timeline_post_dropdown_link">/,
-  '<button type="button" id="_timeline_show_drop_btn" className="_feed_timeline_post_dropdown_link" onClick={onTimelineToggleClick} aria-expanded="false">',
-);
-
-// Original used invalid: <button href="#0" id="_timeline_show_drop_btn"
-s = s.replace(
-  /<button href="#0" id="_timeline_show_drop_btn" className="_feed_timeline_post_dropdown_link">/,
-  '<button type="button" id="_timeline_show_drop_btn" className="_feed_timeline_post_dropdown_link" onClick={onTimelineToggleClick} aria-expanded="false">',
-);
-
-s = s.replace(
-  /<div id="_timeline_drop" className="_feed_timeline_dropdown _timeline_dropdown">/,
-  '<div id="_timeline_drop" className={timelineDropdownClassName}>',
-);
-
 const header = `/* eslint-disable @next/next/no-img-element */
 /* Auto-generated from appifylab-project/feed.html — run: node scripts/convert-feed-html.mjs */
 export type FeedMarkupProps = {
   layoutClassName: string;
   notifyDropdownClassName: string;
   profileDropdownClassName: string;
-  timelineDropdownClassName: string;
   onDarkModeClick: () => void;
   onNotifyClick: () => void;
   onProfileToggleClick: () => void;
-  onTimelineToggleClick: () => void;
 };
 
 export function FeedMarkup({
   layoutClassName,
   notifyDropdownClassName,
   profileDropdownClassName,
-  timelineDropdownClassName,
   onDarkModeClick,
   onNotifyClick,
   onProfileToggleClick,
-  onTimelineToggleClick,
 }: FeedMarkupProps) {
   return (
 `;
