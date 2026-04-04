@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { PostComments } from "./PostComments";
 
 type Author = {
   id: string;
@@ -221,6 +222,7 @@ export function FunctionalPostFeed() {
                   {p.likeCount} {p.likeCount === 1 ? "like" : "likes"}
                 </span>
               </div>
+              <PostComments postId={p.id} />
             </li>
           ))}
         </ul>

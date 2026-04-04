@@ -5,6 +5,7 @@ import type { NextFunction, Request, Response } from "express";
 import multer from "multer";
 import mongoose from "mongoose";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { Comment } from "../models/Comment.js";
 import { Post } from "../models/Post.js";
 
 const postsDir = path.join(process.cwd(), "uploads", "posts");
@@ -106,6 +107,90 @@ function serializePost(p: LeanPost, userId: string) {
   };
 }
 
+type LeanCommentDoc = {
+  _id: unknown;
+  parentComment?: unknown;
+  text: string;
+  createdAt: Date;
+  author: unknown;
+  likedBy?: unknown[];
+};
+
+type FlatComment = {
+  id: string;
+  postId: string;
+  parentCommentId: string | null;
+  text: string;
+  createdAt: Date;
+  author: ReturnType<typeof serializeAuthor>;
+  likeCount: number;
+  likedByMe: boolean;
+};
+
+type NestedComment = FlatComment & { replies: NestedComment[] };
+
+function serializeCommentRow(
+  c: LeanCommentDoc,
+  userId: string,
+  postId: string,
+): FlatComment {
+  const authorRaw = c.author as AuthorShape | null;
+  const author =
+    authorRaw && authorRaw._id != null
+      ? serializeAuthor(authorRaw)
+      : {
+          id: "",
+          firstName: "Unknown",
+          lastName: "user",
+          email: "",
+        };
+  const parent = c.parentComment;
+  const parentCommentId =
+    parent != null && parent !== undefined ? String(parent) : null;
+  return {
+    id: String(c._id),
+    postId,
+    parentCommentId,
+    text: c.text,
+    createdAt: c.createdAt,
+    author,
+    ...likeFieldsForUser(c, userId),
+  };
+}
+
+function nestCommentTree(flat: FlatComment[]): NestedComment[] {
+  const map = new Map<string, NestedComment>();
+  for (const row of flat) {
+    map.set(row.id, { ...row, replies: [] });
+  }
+  const roots: NestedComment[] = [];
+  for (const row of flat) {
+    const node = map.get(row.id)!;
+    const pid = row.parentCommentId;
+    if (!pid) {
+      roots.push(node);
+      continue;
+    }
+    const parent = map.get(pid);
+    if (parent) {
+      parent.replies.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+  const byNewest = (a: NestedComment, b: NestedComment) =>
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  const byOldest = (a: NestedComment, b: NestedComment) =>
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  roots.sort(byNewest);
+  const sortReplies = (node: NestedComment) => {
+    node.replies.sort(byOldest);
+    node.replies.forEach(sortReplies);
+  };
+  roots.forEach(sortReplies);
+  return roots;
+}
+
 router.get("/", requireAuth, async (req, res) => {
   const userId = req.userId!;
   const posts = await Post.find()
@@ -152,6 +237,91 @@ router.post("/", requireAuth, uploadImageOptional, async (req, res) => {
       likeCount: 0,
       likedByMe: false,
     },
+  });
+});
+
+function paramId(value: string | string[] | undefined): string | undefined {
+  if (value == null) return undefined;
+  return Array.isArray(value) ? value[0] : value;
+}
+
+router.get("/:postId/comments", requireAuth, async (req, res) => {
+  const postId = paramId(req.params.postId);
+  const userId = req.userId!;
+  if (!postId || !mongoose.isValidObjectId(postId)) {
+    res.status(400).json({ error: "Invalid post id" });
+    return;
+  }
+  const post = await Post.findById(postId).select("_id").lean();
+  if (!post) {
+    res.status(404).json({ error: "Post not found" });
+    return;
+  }
+  const rows = await Comment.find({ post: postId })
+    .sort({ createdAt: 1 })
+    .populate("author", "firstName lastName email")
+    .lean();
+
+  const flat = rows.map((c) =>
+    serializeCommentRow(c as unknown as LeanCommentDoc, userId, postId),
+  );
+  res.json({ comments: nestCommentTree(flat) });
+});
+
+router.post("/:postId/comments", requireAuth, async (req, res) => {
+  const postId = paramId(req.params.postId);
+  const userId = req.userId!;
+  if (!postId || !mongoose.isValidObjectId(postId)) {
+    res.status(400).json({ error: "Invalid post id" });
+    return;
+  }
+
+  const raw = req.body?.text;
+  const parentRaw = req.body?.parentCommentId;
+  const text = typeof raw === "string" ? raw.trim() : "";
+  if (!text) {
+    res.status(400).json({ error: "Comment text is required" });
+    return;
+  }
+  if (text.length > 2000) {
+    res.status(400).json({ error: "Comment is too long (max 2000 characters)" });
+    return;
+  }
+
+  let parentComment: string | null = null;
+  if (parentRaw != null && parentRaw !== "") {
+    if (typeof parentRaw !== "string" || !mongoose.isValidObjectId(parentRaw)) {
+      res.status(400).json({ error: "Invalid parent comment" });
+      return;
+    }
+    const parentDoc = await Comment.findById(parentRaw).select("post").lean();
+    if (!parentDoc || Array.isArray(parentDoc)) {
+      res.status(400).json({ error: "Parent comment does not belong to this post" });
+      return;
+    }
+    if (String((parentDoc as { post?: unknown }).post) !== postId) {
+      res.status(400).json({ error: "Parent comment does not belong to this post" });
+      return;
+    }
+    parentComment = parentRaw;
+  }
+
+  const post = await Post.findById(postId).select("_id").lean();
+  if (!post) {
+    res.status(404).json({ error: "Post not found" });
+    return;
+  }
+
+  const doc = await Comment.create({
+    post: postId,
+    parentComment,
+    author: userId,
+    text,
+  });
+  await doc.populate("author", "firstName lastName email");
+  const row = doc.toObject() as unknown as LeanCommentDoc;
+  res.status(201).json({
+    comment: { ...serializeCommentRow(row, userId, postId), replies: [] },
   });
 });
 
