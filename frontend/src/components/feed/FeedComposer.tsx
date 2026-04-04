@@ -2,12 +2,21 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
+
+export type ComposerUserAvatar = {
+  isLoading: boolean;
+  photoUrl: string | null;
+  initials: string;
+  seed: string;
+};
 
 type FeedComposerProps = {
   onPostCreated?: () => void;
+  userAvatar: ComposerUserAvatar;
 };
 
-export function FeedComposer({ onPostCreated }: FeedComposerProps) {
+export function FeedComposer({ onPostCreated, userAvatar }: FeedComposerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [submitting, setSubmitting] = useState(false);
@@ -79,7 +88,24 @@ export function FeedComposer({ onPostCreated }: FeedComposerProps) {
           onClick={openPhotoPicker}
           aria-label="Add photo"
         >
-          <img src="/assets/images/txt_img.png" alt="" className="_txt_img" />
+          {userAvatar.isLoading ? (
+            <InitialsAvatar
+              initials="?"
+              seed="loading"
+              size="md"
+              muted
+              className="_txt_img"
+            />
+          ) : userAvatar.photoUrl ? (
+            <img src={userAvatar.photoUrl} alt="" className="_txt_img" />
+          ) : (
+            <InitialsAvatar
+              initials={userAvatar.initials}
+              seed={userAvatar.seed}
+              size="md"
+              className="_txt_img"
+            />
+          )}
         </button>
         <div className="form-floating _feed_inner_text_area_box_form ">
           <textarea

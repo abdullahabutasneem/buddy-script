@@ -70,3 +70,53 @@
   vertical-align: middle;
   flex-shrink: 0;
 }
+
+/* Letter / initials avatars (no stock photo) */
+._buddy_initials_avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 600;
+  line-height: 1;
+  color: #fff;
+  text-transform: uppercase;
+  user-select: none;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+._buddy_initials_avatar--sm {
+  width: 24px;
+  height: 24px;
+  font-size: 9px;
+}
+
+._buddy_initials_avatar--md {
+  width: 40px;
+  height: 40px;
+  font-size: 13px;
+}
+
+._buddy_initials_avatar--lg {
+  width: 54px;
+  height: 54px;
+  font-size: 17px;
+}
+
+._buddy_initials_avatar--muted {
+  background-color: #9ca3af !important;
+}
+
+._header_nav_profile_image img._nav_profile_img,
+._header_nav_profile_image span._buddy_initials_avatar._nav_profile_img {
+  width: 24px;
+  height: 24px;
+}
+
+._nav_profile_dropdown_image img._nav_drop_img,
+._nav_profile_dropdown_image span._buddy_initials_avatar._nav_drop_img {
+  width: 54px;
+  height: 54px;
+  font-size: 17px;
+}

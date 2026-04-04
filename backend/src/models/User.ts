@@ -5,6 +5,8 @@ export interface IUser {
   passwordHash: string;
   firstName: string;
   lastName: string;
+  /** Public URL path (e.g. `/uploads/...`) or absolute URL; optional profile photo */
+  avatarUrl?: string | null;
 }
 
 const userSchema = new Schema<IUser>(
@@ -20,6 +22,7 @@ const userSchema = new Schema<IUser>(
     passwordHash: { type: String, required: true },
     firstName: { type: String, required: true, trim: true, maxlength: 100 },
     lastName: { type: String, required: true, trim: true, maxlength: 100 },
+    avatarUrl: { type: String, trim: true, maxlength: 2048, default: null },
   },
   { timestamps: true }
 );

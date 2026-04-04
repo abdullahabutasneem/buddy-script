@@ -2,11 +2,21 @@
 /* Auto-generated from appifylab-project/feed.html — from repo root: node frontend/scripts/convert-feed-html.mjs */
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
+
+export type FeedHeaderProfile = {
+  displayName: string;
+  initials: string;
+  /** Profile photo URL when the user uploaded one; otherwise show `initials` */
+  photoUrl: string | null;
+};
 
 export type FeedMarkupProps = {
   layoutClassName: string;
   notifyDropdownClassName: string;
   profileDropdownClassName: string;
+  /** null = still loading the signed-in user for the header */
+  headerProfile?: FeedHeaderProfile | null;
   onDarkModeClick: () => void;
   onNotifyClick: () => void;
   onProfileToggleClick: () => void;
@@ -20,12 +30,20 @@ export function FeedMarkup({
   layoutClassName,
   notifyDropdownClassName,
   profileDropdownClassName,
+  headerProfile,
   onDarkModeClick,
   onNotifyClick,
   onProfileToggleClick,
   composerSlot,
   feedPostsSlot,
 }: FeedMarkupProps) {
+  const navDisplayName =
+    headerProfile == null ? "\u2026" : headerProfile.displayName;
+  const navLoading = headerProfile == null;
+  const navPhotoUrl = headerProfile?.photoUrl ?? null;
+  const navInitials = headerProfile?.initials ?? "?";
+  const navSeed = headerProfile?.displayName ?? "user";
+
   return (
     <div className="feed-markup-root" style={{ display: "contents" }}>
       {/* Feed Section Start */}
@@ -494,7 +512,28 @@ export function FeedMarkup({
 									}
 								}}
 							>
-								<img src="/assets/images/profile.png" alt="" className="_nav_profile_img" />
+								{navLoading ? (
+									<InitialsAvatar
+										initials="?"
+										seed="loading"
+										size="sm"
+										muted
+										className="_nav_profile_img"
+									/>
+								) : navPhotoUrl ? (
+									<img
+										src={navPhotoUrl}
+										alt=""
+										className="_nav_profile_img"
+									/>
+								) : (
+									<InitialsAvatar
+										initials={navInitials}
+										seed={navSeed}
+										size="sm"
+										className="_nav_profile_img"
+									/>
+								)}
 							</div>
 							<div className="_header_nav_dropdown">
 								<p
@@ -509,7 +548,7 @@ export function FeedMarkup({
 										}
 									}}
 								>
-									Dylan Field
+									{navDisplayName}
 								</p>
 								<button id="_profile_drop_show_btn" className="_header_nav_dropdown_btn _dropdown_toggle" type="button" onClick={onProfileToggleClick} aria-expanded="false">
 									<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" fill="none" viewBox="0 0 10 6">
@@ -525,10 +564,31 @@ export function FeedMarkup({
 							>
 								<div className="_nav_profile_dropdown_info">
 									<div className="_nav_profile_dropdown_image">
-										<img src="/assets/images/profile.png" alt="" className="_nav_drop_img" />
+										{navLoading ? (
+											<InitialsAvatar
+												initials="?"
+												seed="loading"
+												size="lg"
+												muted
+												className="_nav_drop_img"
+											/>
+										) : navPhotoUrl ? (
+											<img
+												src={navPhotoUrl}
+												alt=""
+												className="_nav_drop_img"
+											/>
+										) : (
+											<InitialsAvatar
+												initials={navInitials}
+												seed={navSeed}
+												size="lg"
+												className="_nav_drop_img"
+											/>
+										)}
 									</div>
 									<div className="_nav_profile_dropdown_info_txt">
-										<h4 className="_nav_dropdown_title">Dylan Field</h4>
+										<h4 className="_nav_dropdown_title">{navDisplayName}</h4>
 										<Link href="/profile" className="_nav_drop_profile" prefetch={false}>
 											View Profile
 										</Link>

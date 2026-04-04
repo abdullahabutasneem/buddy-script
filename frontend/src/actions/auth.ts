@@ -78,18 +78,22 @@ export async function registerAction(
     return { error: "Passwords do not match" };
   }
 
+  const outgoing = new FormData();
+  outgoing.append("firstName", firstName.trim());
+  outgoing.append("lastName", lastName.trim());
+  outgoing.append("email", email.trim());
+  outgoing.append("password", password);
+  outgoing.append("confirmPassword", confirmPassword);
+  const avatar = formData.get("avatar");
+  if (avatar instanceof File && avatar.size > 0) {
+    outgoing.append("avatar", avatar);
+  }
+
   let res: Response;
   try {
     res = await fetch(`${backendUrl}/api/auth/register`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        firstName,
-        lastName,
-        email,
-        password,
-        confirmPassword,
-      }),
+      body: outgoing,
     });
   } catch {
     return { error: "Cannot reach API. Is the backend running?" };

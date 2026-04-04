@@ -11,7 +11,7 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
   }
   try {
     const { sub } = verifyToken(token);
-    const user = await User.findById(sub).select("email firstName lastName");
+    const user = await User.findById(sub).select("email firstName lastName avatarUrl");
     if (!user) {
       res.status(401).json({ error: "Not authenticated" });
       return;
@@ -22,6 +22,7 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
+      avatarUrl: user.avatarUrl ?? null,
     };
     next();
   } catch {

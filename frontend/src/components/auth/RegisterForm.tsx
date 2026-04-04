@@ -12,7 +12,11 @@ export function RegisterForm() {
   const [state, formAction, isPending] = useActionState(registerAction, initial);
 
   return (
-    <form className="_social_registration_form" action={formAction}>
+    <form
+      className="_social_registration_form"
+      action={formAction}
+      encType="multipart/form-data"
+    >
       {state.error ? (
         <p className="text-sm text-red-600 _mar_b14" role="alert">
           {state.error}
@@ -93,6 +97,20 @@ export function RegisterForm() {
               minLength={8}
               className="form-control _social_registration_input"
               autoComplete="new-password"
+            />
+          </div>
+        </div>
+        <div className="col-xl-12 col-lg-12 col-md-12 col-sm-12">
+          <div className="_social_registration_form_input _mar_b14">
+            <label className="_social_registration_label _mar_b8" htmlFor="register-avatar">
+              Profile photo <span className="text-muted">(optional)</span>
+            </label>
+            <input
+              id="register-avatar"
+              name="avatar"
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="form-control _social_registration_input"
             />
           </div>
         </div>
