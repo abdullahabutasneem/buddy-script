@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
+import { BUDDY_AVATAR_UPDATED_EVENT } from "@/lib/buddyProfileEvents";
 import { normalizedPhotoUrl } from "@/lib/resolveAvatarUrl";
 import { computeInitials } from "@/lib/userInitials";
 
@@ -77,7 +78,8 @@ export function ProfileAvatarForm() {
       if (data.user) {
         setPhotoUrl(normalizedPhotoUrl(data.user.avatarUrl));
       }
-      setMessage("Profile photo updated. Refresh the feed if it is open in another tab.");
+      window.dispatchEvent(new Event(BUDDY_AVATAR_UPDATED_EVENT));
+      setMessage("Profile photo updated.");
       form.reset();
     } catch {
       setError("Network error");

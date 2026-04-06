@@ -208,6 +208,7 @@ router.post("/logout", (_req, res) => {
 
 router.get("/me", requireAuth, (req, res) => {
   const u = req.user!;
+  res.set("Cache-Control", "private, no-store, must-revalidate");
   res.json({
     user: serializePublicUser(u),
   });
