@@ -7,13 +7,15 @@ import { computeInitials } from "@/lib/userInitials";
 import { FeedComposer } from "./FeedComposer";
 import { FeedMarkup, type FeedHeaderProfile } from "./FeedMarkup";
 import { FunctionalPostFeed } from "./FunctionalPostFeed";
+import type { FeedPost } from "./feedTypes";
+import type { FeedViewerBrief } from "./TimelinePostCard";
 
 export function FeedClient() {
-  const [sessionReady, setSessionReady] = useState(false);
   const [headerProfile, setHeaderProfile] = useState<FeedHeaderProfile | null>(
     null,
   );
-  const [feedRefreshKey, setFeedRefreshKey] = useState(0);
+  const [viewer, setViewer] = useState<FeedViewerBrief>(null);
+  const [recentCreatedPost, setRecentCreatedPost] = useState<FeedPost | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -81,7 +83,11 @@ export function FeedClient() {
           initials: computeInitials(u.firstName, u.lastName, u.email),
           photoUrl: normalizedPhotoUrl(u.avatarUrl),
         });
-        setSessionReady(true);
+        setViewer({
+          initials: computeInitials(u.firstName, u.lastName, u.email),
+          seed: displayName,
+          photoUrl: normalizedPhotoUrl(u.avatarUrl),
+        });
       } catch {
         if (!cancelled) window.location.replace("/login");
       }
@@ -90,14 +96,6 @@ export function FeedClient() {
       cancelled = true;
     };
   }, []);
-
-  if (!sessionReady) {
-    return (
-      <div className="_layout _layout_main_wrapper _padd_t40 _padd_b40">
-        <p className="_feed_inner_timeline_post_box_para text-center">Loading…</p>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -112,7 +110,7 @@ export function FeedClient() {
         onLogoutClick={() => void handleLogout()}
         composerSlot={
           <FeedComposer
-            onPostCreated={() => setFeedRefreshKey((k) => k + 1)}
+            onPostCreated={(post) => setRecentCreatedPost(post)}
             userAvatar={{
               isLoading: headerProfile === null,
               photoUrl: headerProfile?.photoUrl ?? null,
@@ -121,7 +119,7 @@ export function FeedClient() {
             }}
           />
         }
-        feedPostsSlot={<FunctionalPostFeed refreshNonce={feedRefreshKey} />}
+        feedPostsSlot={<FunctionalPostFeed viewer={viewer} prependPost={recentCreatedPost} />}
       />
       <Script src="/js/bootstrap.bundle.min.js" strategy="afterInteractive" />
     </>

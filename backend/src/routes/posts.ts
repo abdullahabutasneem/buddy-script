@@ -433,7 +433,6 @@ router.get("/:postId/comments", requireAuth, async (req, res) => {
   const rows = await Comment.find({ post: postId })
     .sort({ createdAt: 1 })
     .populate("author", "firstName lastName email")
-    .populate("likedBy", "firstName lastName email")
     .lean();
 
   const flat = rows.map((c) =>
@@ -498,7 +497,6 @@ router.post("/:postId/comments", requireAuth, async (req, res) => {
     text,
   });
   await doc.populate("author", "firstName lastName email");
-  await doc.populate("likedBy", "firstName lastName email");
   const row = doc.toObject() as unknown as LeanCommentDoc;
   res.status(201).json({
     comment: { ...serializeCommentRow(row, userId, postId), replies: [] },

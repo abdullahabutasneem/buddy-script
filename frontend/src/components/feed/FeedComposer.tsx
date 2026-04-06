@@ -3,6 +3,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
+import type { FeedPost } from "./feedTypes";
 
 export type ComposerUserAvatar = {
   isLoading: boolean;
@@ -12,7 +13,7 @@ export type ComposerUserAvatar = {
 };
 
 type FeedComposerProps = {
-  onPostCreated?: () => void;
+  onPostCreated?: (post: FeedPost) => void;
   userAvatar: ComposerUserAvatar;
 };
 
@@ -52,7 +53,10 @@ export function FeedComposer({ onPostCreated, userAvatar }: FeedComposerProps) {
         credentials: "include",
         body,
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        post?: FeedPost;
+      };
       if (!res.ok) {
         setSubmitError(data.error ?? "Could not create post");
         return;
@@ -61,7 +65,9 @@ export function FeedComposer({ onPostCreated, userAvatar }: FeedComposerProps) {
       setVisibility("public");
       setPickedFileName(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-      onPostCreated?.();
+      if (data.post) {
+        onPostCreated?.(data.post);
+      }
     } catch {
       setSubmitError("Network error");
     } finally {

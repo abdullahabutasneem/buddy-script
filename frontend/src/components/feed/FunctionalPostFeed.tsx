@@ -1,8 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { normalizedPhotoUrl } from "@/lib/resolveAvatarUrl";
-import { computeInitials } from "@/lib/userInitials";
 import type { FeedPost } from "./feedTypes";
 import { TimelinePostCard, type FeedViewerBrief } from "./TimelinePostCard";
 
@@ -34,10 +32,14 @@ type FeedApiResponse = {
 };
 
 type FunctionalPostFeedProps = {
-  refreshNonce?: number;
+  viewer?: FeedViewerBrief;
+  prependPost?: FeedPost | null;
 };
 
-export function FunctionalPostFeed({ refreshNonce = 0 }: FunctionalPostFeedProps) {
+export function FunctionalPostFeed({
+  viewer = null,
+  prependPost = null,
+}: FunctionalPostFeedProps) {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -45,7 +47,6 @@ export function FunctionalPostFeed({ refreshNonce = 0 }: FunctionalPostFeedProps
   const [hasMore, setHasMore] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [likeBusyId, setLikeBusyId] = useState<string | null>(null);
-  const [viewer, setViewer] = useState<FeedViewerBrief>(null);
 
   const loadFirstPage = useCallback(async () => {
     setLoadError(null);
@@ -65,7 +66,7 @@ export function FunctionalPostFeed({ refreshNonce = 0 }: FunctionalPostFeedProps
         return;
       }
       const list = (data.posts ?? []).map(normalizePost);
-      setPosts([...list].sort(byNewestFirst));
+      setPosts(list);
       setNextCursor(
         typeof data.nextCursor === "string" && data.nextCursor.length > 0
           ? data.nextCursor
@@ -84,7 +85,7 @@ export function FunctionalPostFeed({ refreshNonce = 0 }: FunctionalPostFeedProps
 
   useEffect(() => {
     void loadFirstPage();
-  }, [loadFirstPage, refreshNonce]);
+  }, [loadFirstPage]);
 
   const loadMore = useCallback(async () => {
     if (nextCursor == null || !hasMore || loadingMore) return;
@@ -106,13 +107,13 @@ export function FunctionalPostFeed({ refreshNonce = 0 }: FunctionalPostFeedProps
       setPosts((prev) => {
         const seen = new Set(prev.map((p) => p.id));
         const merged = [...prev];
-        for (const p of list.sort(byNewestFirst)) {
+        for (const p of list) {
           if (!seen.has(p.id)) {
             seen.add(p.id);
             merged.push(p);
           }
         }
-        return merged.sort(byNewestFirst);
+        return merged;
       });
       setNextCursor(
         typeof data.nextCursor === "string" && data.nextCursor.length > 0
@@ -147,38 +148,13 @@ export function FunctionalPostFeed({ refreshNonce = 0 }: FunctionalPostFeedProps
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch("/api/auth/me", { credentials: "include" });
-        if (!res.ok || cancelled) return;
-        const data = (await res.json()) as {
-          user?: {
-            firstName?: string;
-            lastName?: string;
-            email?: string;
-            avatarUrl?: string | null;
-          };
-        };
-        const u = data.user;
-        if (!u || cancelled) return;
-        const displayName =
-          [u.firstName, u.lastName].filter(Boolean).join(" ").trim() ||
-          u.email ||
-          "Account";
-        setViewer({
-          initials: computeInitials(u.firstName, u.lastName, u.email),
-          seed: displayName,
-          photoUrl: normalizedPhotoUrl(u.avatarUrl),
-        });
-      } catch {
-        /* ignore */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (!prependPost) return;
+    const incoming = normalizePost(prependPost);
+    setPosts((prev) => {
+      const filtered = prev.filter((p) => p.id !== incoming.id);
+      return [incoming, ...filtered].sort(byNewestFirst);
+    });
+  }, [prependPost]);
 
   async function toggleLike(post: FeedPost) {
     if (likeBusyId !== null) return;
