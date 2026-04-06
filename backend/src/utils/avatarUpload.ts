@@ -2,13 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import type { NextFunction, Request, Response } from "express";
 import multer from "multer";
-
-const avatarsDir = path.join(process.cwd(), "uploads", "avatars");
-fs.mkdirSync(avatarsDir, { recursive: true });
+import { AVATARS_DIR } from "../config/uploadsPaths.js";
+import { destroyCloudinaryAssetByUrl } from "./cloudinaryStorage.js";
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    cb(null, avatarsDir);
+    cb(null, AVATARS_DIR);
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
@@ -52,12 +51,17 @@ export function publicAvatarPath(filename: string): string {
 }
 
 export function removeStoredAvatarIfOwned(avatarUrl: string | null | undefined): void {
-  if (!avatarUrl || !avatarUrl.startsWith("/uploads/avatars/")) return;
+  if (!avatarUrl) return;
+  if (avatarUrl.startsWith("https://")) {
+    void destroyCloudinaryAssetByUrl(avatarUrl);
+    return;
+  }
+  if (!avatarUrl.startsWith("/uploads/avatars/")) return;
   const name = avatarUrl.slice("/uploads/avatars/".length);
   if (!name || name.includes("..") || name.includes("/") || name.includes("\\")) {
     return;
   }
-  const full = path.join(avatarsDir, name);
+  const full = path.join(AVATARS_DIR, name);
   if (fs.existsSync(full)) {
     try {
       fs.unlinkSync(full);

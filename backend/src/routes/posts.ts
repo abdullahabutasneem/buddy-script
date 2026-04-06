@@ -15,13 +15,17 @@ import {
   userIdsEqual,
   type AuthorPublic,
 } from "../utils/likes.js";
-
-const postsDir = path.join(process.cwd(), "uploads", "posts");
-fs.mkdirSync(postsDir, { recursive: true });
+import { POSTS_UPLOAD_DIR } from "../config/uploadsPaths.js";
+import {
+  destroyCloudinaryAssetByUrl,
+  isCloudImageStorageEnabled,
+  unlinkQuietly,
+  uploadImageFileToCloudinary,
+} from "../utils/cloudinaryStorage.js";
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    cb(null, postsDir);
+    cb(null, POSTS_UPLOAD_DIR);
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase() || ".bin";
@@ -73,9 +77,10 @@ function serializeAuthor(author: AuthorShape) {
   };
 }
 
-function imagePublicUrl(filename: string | null | undefined): string | null {
-  if (!filename) return null;
-  return `/uploads/posts/${filename}`;
+function imagePublicUrl(stored: string | null | undefined): string | null {
+  if (!stored) return null;
+  if (stored.startsWith("https://") || stored.startsWith("http://")) return stored;
+  return `/uploads/posts/${stored}`;
 }
 
 type LeanPost = {
@@ -380,10 +385,30 @@ router.post("/", requireAuth, uploadImageOptional, async (req, res) => {
   const visibility =
     visRaw === "private" || visRaw === "public" ? visRaw : "public";
 
+  let imageStored: string | null = null;
+  if (file) {
+    if (isCloudImageStorageEnabled()) {
+      try {
+        const { secureUrl } = await uploadImageFileToCloudinary(
+          file.path,
+          "buddy-script/posts",
+        );
+        imageStored = secureUrl;
+      } catch {
+        unlinkQuietly(file.path);
+        res.status(500).json({ error: "Could not upload image" });
+        return;
+      }
+      unlinkQuietly(file.path);
+    } else {
+      imageStored = file.filename;
+    }
+  }
+
   const post = await Post.create({
     author: req.userId!,
     text,
-    imageFilename: file?.filename ?? null,
+    imageFilename: imageStored,
     visibility,
   });
 
@@ -564,12 +589,16 @@ router.delete("/:postId", requireAuth, async (req, res) => {
 
   const filename = (doc as { imageFilename?: string | null }).imageFilename;
   if (filename) {
-    const fp = path.join(postsDir, filename);
-    if (fs.existsSync(fp)) {
-      try {
-        fs.unlinkSync(fp);
-      } catch {
-        /* ignore */
+    if (filename.startsWith("https://") || filename.startsWith("http://")) {
+      void destroyCloudinaryAssetByUrl(filename);
+    } else {
+      const fp = path.join(POSTS_UPLOAD_DIR, filename);
+      if (fs.existsSync(fp)) {
+        try {
+          fs.unlinkSync(fp);
+        } catch {
+          /* ignore */
+        }
       }
     }
   }

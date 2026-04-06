@@ -2,8 +2,21 @@ import mongoose, { Schema, type Types } from "mongoose";
 
 export type PostVisibility = "public" | "private";
 
-/** Stored upload basename only (no path segments); matches multer-generated names. */
+/** Local disk: basename only. Cloud: full `https://` URL (e.g. Cloudinary). */
 const SAFE_FILENAME_RE = /^[a-zA-Z0-9._-]+$/;
+
+function isValidStoredPostImage(value: string | null): boolean {
+  if (value == null || value === "") return true;
+  if (value.startsWith("https://")) {
+    try {
+      const u = new URL(value);
+      return u.protocol === "https:" && value.length <= 2048;
+    } catch {
+      return false;
+    }
+  }
+  return SAFE_FILENAME_RE.test(value) && !value.includes("..");
+}
 
 export interface IPost {
   author: Types.ObjectId;
@@ -20,13 +33,12 @@ const postSchema = new Schema<IPost>(
     imageFilename: {
       type: String,
       default: null,
-      maxlength: 255,
+      maxlength: 2048,
       validate: {
         validator(value: string | null) {
-          if (value == null || value === "") return true;
-          return SAFE_FILENAME_RE.test(value) && !value.includes("..");
+          return isValidStoredPostImage(value);
         },
-        message: "Invalid stored image filename",
+        message: "Invalid stored post image",
       },
     },
     likedBy: {

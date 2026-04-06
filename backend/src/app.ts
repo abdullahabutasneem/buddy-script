@@ -1,8 +1,8 @@
-import path from "node:path";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
+import { UPLOADS_ROOT } from "./config/uploadsPaths.js";
 import routes from "./routes/index.js";
 
 function parseCorsOrigins(): string | string[] {
@@ -15,8 +15,6 @@ function parseCorsOrigins(): string | string[] {
   if (list.length === 1) return list[0]!;
   return list;
 }
-
-const uploadsRoot = path.join(process.cwd(), "uploads");
 
 export function createApp() {
   const app = express();
@@ -42,7 +40,7 @@ export function createApp() {
   app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
 
-  app.use("/uploads", express.static(uploadsRoot));
+  app.use("/uploads", express.static(UPLOADS_ROOT));
 
   app.use("/api", routes);
 

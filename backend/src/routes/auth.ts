@@ -11,6 +11,11 @@ import {
   publicAvatarPath,
   removeStoredAvatarIfOwned,
 } from "../utils/avatarUpload.js";
+import {
+  isCloudImageStorageEnabled,
+  unlinkQuietly,
+  uploadImageFileToCloudinary,
+} from "../utils/cloudinaryStorage.js";
 
 const router = Router();
 
@@ -113,7 +118,26 @@ router.post(
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  const avatarUrl = req.file ? publicAvatarPath(req.file.filename) : null;
+
+  let avatarUrl: string | null = null;
+  if (req.file) {
+    if (isCloudImageStorageEnabled()) {
+      try {
+        const { secureUrl } = await uploadImageFileToCloudinary(
+          req.file.path,
+          "buddy-script/avatars",
+        );
+        avatarUrl = secureUrl;
+        unlinkQuietly(req.file.path);
+      } catch {
+        cleanupUpload();
+        res.status(500).json({ error: "Could not upload profile photo" });
+        return;
+      }
+    } else {
+      avatarUrl = publicAvatarPath(req.file.filename);
+    }
+  }
 
   try {
     const user = await User.create({
@@ -131,6 +155,7 @@ router.post(
       user: serializePublicUser(user),
     });
   } catch {
+    removeStoredAvatarIfOwned(avatarUrl);
     cleanupUpload();
     res.status(500).json({ error: "Could not create account" });
   }
@@ -143,12 +168,33 @@ router.patch("/profile", requireAuth, optionalAvatarUpload, async (req, res) => 
   }
 
   const newPath = req.file.path;
-  const newUrl = publicAvatarPath(req.file.filename);
+
+  let newUrl: string;
+  if (isCloudImageStorageEnabled()) {
+    try {
+      const { secureUrl } = await uploadImageFileToCloudinary(
+        newPath,
+        "buddy-script/avatars",
+      );
+      newUrl = secureUrl;
+      unlinkQuietly(newPath);
+    } catch {
+      unlinkQuietly(newPath);
+      res.status(500).json({ error: "Could not upload profile photo" });
+      return;
+    }
+  } else {
+    newUrl = publicAvatarPath(req.file.filename);
+  }
 
   try {
     const user = await User.findById(req.userId);
     if (!user) {
-      if (fs.existsSync(newPath)) fs.unlinkSync(newPath);
+      if (isCloudImageStorageEnabled()) {
+        void removeStoredAvatarIfOwned(newUrl);
+      } else if (fs.existsSync(newPath)) {
+        fs.unlinkSync(newPath);
+      }
       res.status(404).json({ error: "User not found" });
       return;
     }
@@ -162,7 +208,8 @@ router.patch("/profile", requireAuth, optionalAvatarUpload, async (req, res) => 
       user: serializePublicUser(user),
     });
   } catch {
-    if (fs.existsSync(newPath)) {
+    removeStoredAvatarIfOwned(newUrl);
+    if (!isCloudImageStorageEnabled() && fs.existsSync(newPath)) {
       try {
         fs.unlinkSync(newPath);
       } catch {
