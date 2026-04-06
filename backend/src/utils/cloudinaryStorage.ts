@@ -3,10 +3,44 @@ import { v2 as cloudinary } from "cloudinary";
 
 const CLOUDINARY_HOST = "res.cloudinary.com";
 
+/** Parse `cloudinary://API_KEY:API_SECRET@CLOUD_NAME` (dashboard “API environment variable”). */
+function parseCloudinaryConnectionUrl(raw: string): {
+  cloud_name: string;
+  api_key: string;
+  api_secret: string;
+} | null {
+  const trimmed = raw.trim();
+  if (!trimmed.toLowerCase().startsWith("cloudinary://")) {
+    return null;
+  }
+  try {
+    const uri = new URL(trimmed);
+    const cloud_name = uri.hostname;
+    const api_key = decodeURIComponent(uri.username || "");
+    const api_secret = decodeURIComponent(uri.password || "");
+    if (!cloud_name || !api_key || !api_secret) return null;
+    return { cloud_name, api_key, api_secret };
+  } catch {
+    return null;
+  }
+}
+
 function configureIfPossible(): boolean {
   const url = process.env.CLOUDINARY_URL?.trim();
   if (url) {
-    cloudinary.config({ secure: true, url });
+    const parsed = parseCloudinaryConnectionUrl(url);
+    if (!parsed) {
+      console.error(
+        "[buddy-script] CLOUDINARY_URL is set but invalid. Use cloudinary://API_KEY:API_SECRET@CLOUD_NAME from the Cloudinary dashboard.",
+      );
+      return false;
+    }
+    cloudinary.config({
+      secure: true,
+      cloud_name: parsed.cloud_name,
+      api_key: parsed.api_key,
+      api_secret: parsed.api_secret,
+    });
     return true;
   }
   const name = process.env.CLOUDINARY_CLOUD_NAME?.trim();
@@ -78,16 +112,22 @@ export async function uploadImageFileToCloudinary(
   if (!isCloudImageStorageEnabled()) {
     throw new Error("Cloudinary is not configured");
   }
-  const result = await cloudinary.uploader.upload(localPath, {
-    folder,
-    resource_type: "image",
-    overwrite: false,
-  });
-  const secureUrl = result.secure_url as string | undefined;
-  if (!secureUrl) {
-    throw new Error("Cloudinary upload returned no URL");
+  try {
+    const result = await cloudinary.uploader.upload(localPath, {
+      folder,
+      resource_type: "image",
+      overwrite: false,
+    });
+    const secureUrl = result.secure_url as string | undefined;
+    if (!secureUrl) {
+      throw new Error("Cloudinary upload returned no URL");
+    }
+    return { secureUrl };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[buddy-script] Cloudinary upload failed:", msg);
+    throw err;
   }
-  return { secureUrl };
 }
 
 export async function destroyCloudinaryAssetByUrl(url: string | null | undefined): Promise<void> {

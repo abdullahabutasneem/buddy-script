@@ -26,10 +26,13 @@ backend/uploads/
 
 # misc
 .DS_Store
+Thumbs.db
 *.pem
 
-# local HTML/CSS reference only (not shipped with the app)
-appifylab-project/
+# IDE / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
 
 # debug
 npm-debug.log*
